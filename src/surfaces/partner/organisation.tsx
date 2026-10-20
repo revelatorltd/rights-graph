@@ -24,7 +24,7 @@ import {
   unanswered,
 } from "@revelator/pro-ui";
 
-import { TODAY, WORLD } from "../../graph/fixtures";
+import { now, TODAY, WORLD } from "../../graph/fixtures";
 import { USES, type Partner, type Use } from "../../graph/model";
 import { TerritoryChip, decidedBy, partyMark } from "../../rights/kit";
 import { go } from "../../route";
@@ -195,7 +195,7 @@ export function OnboardingWizard({ working }: { working: Working }) {
           contacts,
           uses: answers.uses as readonly Use[],
           territories: answers.reach === "Worldwide" ? WORLD : { include: answers.territories.map(isoOf) },
-          terms: { version: TERMS_VERSION, by: answers.businessName.trim(), at: TODAY },
+          terms: { version: TERMS_VERSION, by: answers.businessName.trim(), at: now() },
           submitted: TODAY,
         });
         go(partnerHref("organisation"));

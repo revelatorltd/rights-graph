@@ -23,6 +23,14 @@ import type {
  * doc writes it so a reviewer can check the screens against the doc's own answers.
  */
 export const TODAY = new Date(2026, 9, 20);
+/**
+ * The moment a write is recorded: today, at the time of day it happens. Only for WHEN something was
+ * decided, received or signed — never a validity date, which reads on the day (`TODAY`).
+ */
+export const now = () => {
+  const clock = new Date();
+  return new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), clock.getHours(), clock.getMinutes());
+};
 const day = (year: number, month: number, date: number) => new Date(year, month - 1, date);
 const at = (year: number, month: number, date: number, hour: number, minute = 0) =>
   new Date(year, month - 1, date, hour, minute);
@@ -831,7 +839,7 @@ export function linkRecording(recordingId: string, workId: string, source: strin
   const recording = ASSETS[index]!;
   ASSETS[index] = { ...recording, embodies: [...(recording.embodies ?? []), { workId, portion: "Full", source }] };
   CONFLICTS = CONFLICTS.map((one) =>
-    one.assetId === recordingId && one.kind === "Missing work link" ? { ...one, state: "Resolved", step: 3, resolution: { actor: source, at: TODAY, reason: `Linked to ${assetById(workId).title}.` } } : one,
+    one.assetId === recordingId && one.kind === "Missing work link" ? { ...one, state: "Resolved", step: 3, resolution: { actor: source, at: now(), reason: `Linked to ${assetById(workId).title}.` } } : one,
   );
   wrote();
 }

@@ -1,19 +1,20 @@
 import { formatDate, formatList, formatMeta, formatPercent, formatRange, type StatusKey } from "@revelator/pro-ui";
 
 import {
+  addAssertion,
+  addConflict,
   AGREEMENTS,
+  partyName,
   ASSERTIONS,
+  assetById,
   ASSETS,
   ATTESTATIONS,
   CONFLICTS,
   CREDITS,
   GRANTS,
   MERGES,
+  now,
   TODAY,
-  addAssertion,
-  addConflict,
-  assetById,
-  partyName,
   updateConflict,
   withdrawAssertion,
 } from "../../../graph/fixtures";
@@ -322,7 +323,7 @@ export function writeClaim(draft: ClaimDraft, actor: string): { id: string; conf
       updateConflict(open.id, {
         state: "Resolved",
         step: 3,
-        resolution: { actor, at: TODAY, reason: `Corrected by ${partyName(draft.partyId)} to ${formatPercent(draft.share, { whole: true })}; the shares are whole again.` },
+        resolution: { actor, at: now(), reason: `Corrected by ${partyName(draft.partyId)} to ${formatPercent(draft.share, { whole: true })}; the shares are whole again.` },
       });
       replaced = open.id;
     }
@@ -377,7 +378,7 @@ export function withdrawClaim(claim: Assertion, actor: string) {
       updateConflict(open.id, {
         state: "Resolved",
         step: 3,
-        resolution: { actor, at: TODAY, reason: `${partyName(claim.partyId)} withdrew its claim.` },
+        resolution: { actor, at: now(), reason: `${partyName(claim.partyId)} withdrew its claim.` },
       });
   }
 }

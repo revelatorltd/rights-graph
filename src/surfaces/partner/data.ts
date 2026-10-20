@@ -1,20 +1,21 @@
 import { formatMeta } from "@revelator/pro-ui";
 
 import {
+  addAssertion,
+  addConflict,
+  addRequest,
+  partyName,
   ASSERTIONS,
+  assetById,
   ASSETS,
   CONFLICTS,
   GRANTS,
+  now,
   PARTNERS,
   PROOF,
   REQUESTS,
   TODAY,
   WORLD,
-  addAssertion,
-  addConflict,
-  assetById,
-  partyName,
-  addRequest,
   wrote,
 } from "../../graph/fixtures";
 import type { Asset, Decision, Partner, ProofEvent, Request, ScopeLevel, Side, TerritorySet, Use } from "../../graph/model";
@@ -300,7 +301,7 @@ export function approveApplication(partner: string, actor: string) {
   if (!application) return;
   APPLICATIONS = {
     ...APPLICATIONS,
-    [partner]: { ...application, approved: { actor, onBehalfOf: "Sureel Rights Ops", authority: "Partner review", at: TODAY } },
+    [partner]: { ...application, approved: { actor, onBehalfOf: "Sureel Rights Ops", authority: "Partner review", at: now() } },
   };
   const scopes = application.kind === "Society" ? ["registrations:write", "claims:read"] : ["clearance:read", "usage:write", "requests:write"];
   KEYS = [
@@ -535,7 +536,7 @@ export function requestLicence(input: {
       start: input.start,
       end: input.end,
       deadline,
-      received: TODAY,
+      received: now(),
       state: cleared ? "Auto-cleared" : "Needs decision",
       clearedBy: cleared,
       purpose: side === "Master" ? input.purpose : `${input.purpose} — composition side.`,
@@ -754,7 +755,7 @@ export const uploadById = (id: string) => UPLOADS.find((one) => one.id === id);
  */
 export function addUpload(partner: string, file: string, kind: Upload["kind"]) {
   const id = `up-${1100 + UPLOADS.length}`;
-  UPLOADS = [{ id, partner, file, kind, received: TODAY, state: "Matched", rows: cd7Rows(TODAY, kind === "Provenance") }, ...UPLOADS];
+  UPLOADS = [{ id, partner, file, kind, received: now(), state: "Matched", rows: cd7Rows(TODAY, kind === "Provenance") }, ...UPLOADS];
   wrote();
   return id;
 }

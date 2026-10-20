@@ -1,14 +1,15 @@
 import {
+  addAccess,
+  addBatch,
   BATCHES,
   CONFLICTS,
   MAPPING,
+  now,
   ROW_ERRORS,
-  TENANTS,
-  TODAY,
-  addAccess,
-  addBatch,
   setBatchState,
   setSharing as setTenantSharing,
+  TENANTS,
+  TODAY,
   wrote,
 } from "../../graph/fixtures";
 import { follow, formatCount } from "@revelator/pro-ui";
@@ -131,7 +132,7 @@ export function receive(file: string, format: Format, channel: Channel, rows: nu
     file,
     format,
     channel,
-    received: TODAY,
+    received: now(),
     rows,
     validated: rows - failing,
     ingested: 0,
@@ -166,7 +167,7 @@ export function ingest(batchId: string) {
   const results = { matched: rows - conflicting - unmatched - fresh, new: fresh, conflicting, unmatched };
   upliftFrom(batch);
   MATCH_RECORDS = [...sampleOf(batch), ...MATCH_RECORDS];
-  addAccess(TENANT_ID, { at: TODAY, who: "Resolver v1.3", via: `Internal · match job for ${batch.id}`, what: `Shared fields, ${formatCount(rows, { one: "row", many: "rows" })}` });
+  addAccess(TENANT_ID, { at: now(), who: "Resolver v1.3", via: `Internal · match job for ${batch.id}`, what: `Shared fields, ${formatCount(rows, { one: "row", many: "rows" })}` });
   setBatchState(batchId, { ingested: rows, matched: rows, state: "Matched", results });
 }
 

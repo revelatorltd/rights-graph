@@ -27,7 +27,7 @@ import {
 } from "@revelator/pro-ui";
 import { useState } from "react";
 
-import { ASSERTIONS, TODAY, assetById, partyName, updateConflict } from "../../graph/fixtures";
+import { partyName, ASSERTIONS, assetById, now, updateConflict } from "../../graph/fixtures";
 import { COUNTERCLAIM_STEPS, type Conflict } from "../../graph/model";
 import { shareTotals, standing, tierOf } from "../../graph/resolve";
 import { TerritoryChip, TierChip, decidedBy } from "../../rights/kit";
@@ -304,7 +304,7 @@ function CorrectClaim({ conflict, claim, ...held }: HeldBy & { conflict: Conflic
             state: "Resolved",
             step: 3,
             total: sum,
-            resolution: { actor: "Resolver v1.3", onBehalfOf: "Sureel", at: TODAY, reason: `Meridian Music Group corrected its claim: writer shares now total ${formatPercent(sum)}.`, rule: "Resolver v1.3 · supersede" },
+            resolution: { actor: "Resolver v1.3", onBehalfOf: "Sureel", at: now(), reason: `Meridian Music Group corrected its claim: writer shares now total ${formatPercent(sum)}.`, rule: "Resolver v1.3 · supersede" },
           });
         else updateConflict(conflict.id, { total: sum });
       }}
@@ -328,7 +328,7 @@ function WithdrawClaim({ conflict, ...held }: HeldBy & { conflict: Conflict }) {
         updateConflict(conflict.id, {
           state: "Resolved",
           step: 3,
-          resolution: { actor: "Meridian Music Group admin", at: TODAY, reason: "Meridian Music Group withdrew its claim." },
+          resolution: { actor: "Meridian Music Group admin", at: now(), reason: "Meridian Music Group withdrew its claim." },
         })
       }
     />
