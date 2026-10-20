@@ -18,7 +18,7 @@ import type { Use } from "../../graph/model";
 import { GRAPH_VERSION, RULE_VERSION, clearanceOf, controllers, tierOf, type Answer } from "../../graph/resolve";
 import { ClearanceBadge, TerritoryChip, TierChip, decidedBy } from "../../rights/kit";
 import { go, href } from "../../route";
-import { LOOKABLE, TERRITORIES, hasScope, lookUp, lookupById, lookupsOf, reasonFor, standingOf, territoryName, type Lookup, type Snapshot } from "./data";
+import { LOOKABLE, TERRITORIES, hasScope, lookUp, lookupById, lookupsOf, standingOf, territoryName, type Lookup, type Snapshot } from "./data";
 import { downloadReceipt } from "./receipt";
 import { partnerHref, type PartnerPage, type Working } from "./working";
 
@@ -197,7 +197,7 @@ export function SideCards({ assetId, use, country, answer }: { assetId: string; 
 /** One look-up: the answer as the receipt froze it, side by side, and whether the graph has moved since. */
 export function LookupDetail({ lookup }: { lookup: Lookup }) {
   const asset = assetById(lookup.assetId);
-  const now = clearanceOf(lookup.assetId, lookup.use, { partner: lookup.partner, country: lookup.country });
+  const now = clearanceOf(lookup.assetId, lookup.use, { partner: lookup.partner, country: lookup.country, audience: "partner" });
   const moved = now.state !== lookup.answer.state;
   return (
     <DetailPage
@@ -218,7 +218,7 @@ export function LookupDetail({ lookup }: { lookup: Lookup }) {
       <Metadata>
         {moved ? (
           <Alert intent="warn" title={`The graph now answers ${now.state}`}>
-            {`${reasonFor(lookup.partner, now)} This receipt still proves what you were told on ${formatDate(lookup.asked, "minute")}.`}
+            {`${now.reason} This receipt still proves what you were told on ${formatDate(lookup.asked, "minute")}.`}
           </Alert>
         ) : null}
         <FactCard

@@ -49,7 +49,7 @@ yet).
 | B11 | **A diff of two versions** (rule versions; a claim corrected) | S7, S1·T | two FactCards side by side | A `Diff` pattern (before / after, changed fields marked with `ChangeMark`). |
 | B12 | **A field taking a file as evidence** inside a form | S1, S1·T, S2 | `UploaderDocument` beside the form, not in its draft | `Field as="file"` bound to the form's draft. |
 | B13 | **A boolean field in a declared form / settings switch bound to a draft** | S1, S3 | a choice of Yes / No (as RCC gap 17) | `Field as="switch"` in `SettingsForm` drafts. |
-| B14 | **Persona switch reaching the surface** — a top-level component reading `usePersona()` outside the shell doesn't follow the switch | S6, (S1/S2 shell) | a small `Follow` re-render wrapper | `usePersona` subscribes to the shell's switch wherever it is called (or the shell passes it down). |
+| B14 | **Persona switch reaching the surface** (worked around once for all surfaces: `useShellPersona` in `src/surfaces/surface.ts`) — a top-level component reading `usePersona()` outside the shell doesn't follow the switch | S6, (S1/S2 shell) | a small `Follow` re-render wrapper | `usePersona` subscribes to the shell's switch wherever it is called (or the shell passes it down). |
 | B15 | **The phone**: four tabs only (Profile, Works behind More); the record's primary action folds into ⋮; row commands hidden; a person's mark drawn as a full-width disc | S3 | as the system draws it | A five-tab bar for a person's app; the primary action kept on the band at hand width; a cap on the record mark's size at hand width. |
 | B16 | **Long values**: a record name in the header, prose in a fact card, a reason in a facet tile, a hash shown whole | home, S7, S8 | short titles + a soft Alert; hashes truncated | `Truncate` with full value on focus for codes; a `prose` fact kind. |
 | B17 | **Marks the closed set lacks**: consent, credit, API key, webhook, proof event / batch / key, grant, file batch | S1, S3, S5, S6, S8 | nearest marks (`rights`, `verified`, `code`, `vault`…) — never a look-alike drawn | REPORTED, as the system's rule says: seven marks for the icon set's owner. |
@@ -63,11 +63,11 @@ Fixed in the integration pass where marked ✓; the rest are open.
 | # | Found | By | Status |
 | - | ----- | -- | ------ |
 | C1 | Voice/NIL asked the publishers; an artist's opt-out was not the reason given | S3 | ✓ resolver: Voice/NIL is a person's right; an artist-level deny answers first |
-| C2 | Writes the shared graph had no setter for (withdraw a claim, add a request, sharing, access log) were done in place by surfaces | S1, S1·T, S2, S6, S7 | integration pass |
-| C3 | The state a new claim takes, the overclaim check at write time, chain of title — decided in surface folders | S1·T, S2 | integration pass → `resolve.ts` |
-| C4 | Bitemporal: the resolver read valid time only, so "as we knew it on" showed today's totals | S1·T, S7 | integration pass |
-| C5 | Clearance reasons named every partner on an allowlist — a leak to partners | S6 | integration pass |
-| C6 | At-a-glance clearance asked in the US only, so tracks licensed excl. US/CA read 0 of 8 | S1·T, S3 | integration pass |
+| C2 | Writes the shared graph had no setter for (withdraw a claim, add a request, sharing, access log) were done in place by surfaces | S1, S1·T, S2, S6, S7 | ✓ `withdrawAssertion`, `addRequest`, `setSharing`, `addAccess` — the contributor now reads its tenant live, so a console policy change reaches its access log |
+| C3 | The state a new claim takes, the overclaim check at write time, chain of title — decided in surface folders | S1·T, S2 | ✓ `stateForNewClaim` and `claimsBehind` in `resolve.ts`; `chainOf` stays the publisher's (it reads the publisher's own society data) |
+| C4 | Bitemporal: the resolver read valid time only, so "as we knew it on" showed today's totals | S1·T, S7 | ✓ `controllers`/`shareTotals` take `knownAt`: Northbound as known on 15 Feb 2026 reads DE 100%, not 110% |
+| C5 | Clearance reasons named every partner on an allowlist — a leak to partners | S6 | ✓ `audience: "partner"` names only the asking partner |
+| C6 | At-a-glance clearance asked in the US only, so tracks licensed excl. US/CA read 0 of 8 | S1·T, S3 | ✓ asks where the master is controlled and says where (Lowlight: 3 of 8 · in World excl. CA, US) |
 | C7 | No home in the model for registrations, conflict evidence, counter-offers, suggested links, merge history, Merkle batches/TSA tokens, a claim reported only in a contributor's tenant | S2, S6, S7, S8 | open — held in surface `data.ts` |
 | C8 | Tier is per asset; the FRD's claim row wants it per claim | S1·T, S2 | open |
 | C9 | `RULE_VERSION` is a constant: publishing a rule in S7 doesn't change what the resolver reads | S7 | open |

@@ -5,8 +5,10 @@ import {
   ROW_ERRORS,
   TENANTS,
   TODAY,
+  addAccess,
   addBatch,
   setBatchState,
+  setSharing as setTenantSharing,
   wrote,
 } from "../../graph/fixtures";
 import { follow, formatCount } from "@revelator/pro-ui";
@@ -164,10 +166,7 @@ export function ingest(batchId: string) {
   const results = { matched: rows - conflicting - unmatched - fresh, new: fresh, conflicting, unmatched };
   upliftFrom(batch);
   MATCH_RECORDS = [...sampleOf(batch), ...MATCH_RECORDS];
-  ACCESS = [
-    { at: TODAY, who: "Resolver v1.3", via: `Internal · match job for ${batch.id}`, what: `Shared fields, ${formatCount(rows, { one: "row", many: "rows" })}` },
-    ...ACCESS,
-  ];
+  addAccess(TENANT_ID, { at: TODAY, who: "Resolver v1.3", via: `Internal · match job for ${batch.id}`, what: `Shared fields, ${formatCount(rows, { one: "row", many: "rows" })}` });
   setBatchState(batchId, { ingested: rows, matched: rows, state: "Matched", results });
 }
 
@@ -325,28 +324,27 @@ export function correctClaim(conflictId: string, shares: OwnClaim["shares"], evi
 }
 
 // ---------------------------------------------------------------------------------------------
-// Sharing (S5-5) and the access log (S5-6), held so a change and a new read redraw.
+// Sharing (S5-5) and the access log (S5-6) — the tenant's own, as the graph holds them, so a
+// change made here or in the Graph Console (S7-8) reads the same on both.
 
 export type Level = "Shared" | "Private" | "Encrypted";
 export const LEVELS: readonly Level[] = ["Shared", "Private", "Encrypted"];
-let SHARING: { field: string; level: Level }[] = tenant().sharing.map((one) => ({ ...one }));
-export const sharing = () => SHARING;
-export const levelOf = (field: string) => SHARING.find((one) => one.field === field)?.level ?? "Private";
+export const sharing = () => tenant().sharing;
+export const levelOf = (field: string) => sharing().find((one) => one.field === field)?.level ?? "Private";
 export function setSharing(levels: Readonly<Record<string, Level>>) {
-  SHARING = SHARING.map((one) => ({ ...one, level: levels[one.field] ?? one.level }));
-  wrote();
+  for (const one of sharing()) if (levels[one.field] && levels[one.field] !== one.level) setTenantSharing(TENANT_ID, one.field, levels[one.field]!);
 }
 
 export type Read = Tenant["access"][number];
-/** The graph's reads, and the ones before them this tenant's log still holds. */
-let ACCESS: Read[] = [
-  ...tenant().access,
+/** The reads before the graph's own log begins, which this tenant's log still holds. */
+const EARLIER: readonly Read[] = [
   { at: new Date(2026, 9, 16, 3, 0), who: "WMG Recorded Music", via: "Splits API · ck_live_44ae", what: "Resolved splits on 1,880 shared assets — shared fields only" },
   { at: new Date(2026, 9, 15, 17, 32), who: "Sureel external auditor (Ardent Assurance)", via: "Graph Console · audit request AR-109", what: "Agreement references on 12 works, 60-minute window", audit: true },
   { at: new Date(2026, 9, 14, 8, 10), who: "PRS for Music", via: "Partner API · ck_live_7c21", what: "Work registrations, 4,410 ISWCs" },
   { at: new Date(2026, 9, 12, 2, 41), who: "Resolver v1.3", via: "Internal · match job MJ-8790", what: "Shared fields, 2,410,020 rows" },
 ];
-export const access = (): readonly Read[] => ACCESS;
+/** The graph's reads, newest first, then the ones before them. */
+export const access = (): readonly Read[] => [...tenant().access, ...EARLIER];
 export const channelOf = (read: Read) =>
   read.audit ? "Audit request" : /^Internal/.test(read.via) ? "Sureel internal" : /portal/i.test(read.via) ? "Contributor portal" : "Graph API";
 

@@ -11,17 +11,19 @@ import {
   RULES,
   TENANTS,
   TODAY,
+  addAccess,
   assetById,
   partyName,
   linkRecording,
   setAttestationState,
   setGrantState,
+  setSharing,
   updateConflict,
   wrote,
 } from "../../graph/fixtures";
 import type { Assertion, Conflict, Feed, Lane, Severity, Tenant } from "../../graph/model";
 import { PRECEDENCE } from "../../graph/model";
-import { RULE_VERSION, covers, standing, worksOf } from "../../graph/resolve";
+import { RULE_VERSION, worksOf } from "../../graph/resolve";
 
 /**
  * What the console keeps that the shared graph does not — notes on a conflict, merge decisions, a
@@ -380,37 +382,8 @@ export const REPLAY_SAMPLE: readonly { id: string; assetId: string; value: strin
 export type SharingLevel = Tenant["sharing"][number]["level"];
 export const SHARING_LEVELS: readonly SharingLevel[] = ["Shared", "Private", "Encrypted"];
 
-/** A second contributor, onboarding — so the tenants are a set and not one record. */
-const ARCADE: Tenant = {
-  id: "p-arcade",
-  name: "Mistral Arcade Records",
-  sharing: [
-    { field: "ISRC, ISWC, UPC", level: "Shared" },
-    { field: "Titles, artists, writers", level: "Shared" },
-    { field: "Ownership share totals", level: "Private" },
-    { field: "Territories and terms", level: "Private" },
-    { field: "Agreement references", level: "Private" },
-    { field: "Royalty rates and advances", level: "Encrypted" },
-  ],
-  access: [
-    { at: at(10, 14, 0, 40), who: "Resolver v1.3", via: "Internal · match job MJ-8790", what: "Shared fields, 210,000 rows" },
-    { at: at(10, 13, 16, 2), who: "Mistral Arcade Records admin", via: "Contributor portal", what: "Own match results" },
-  ],
-};
-
-export const tenants = (): readonly Tenant[] => [...TENANTS, ARCADE];
+export const tenants = (): readonly Tenant[] => TENANTS;
 export const tenantById = (id: string) => tenants().find((one) => one.id === id)!;
-
-type Access = Tenant["access"][number];
-type Sharing = Tenant["sharing"][number];
-
-/**
- * The tenant's own lists, written in place: the contributor portal (S5) reads the same arrays, so a
- * policy change and an audit window show in the contributor's own log. The graph has no setter for
- * either yet — logged.
- */
-const accessOf = (tenant: Tenant) => tenant.access as Access[];
-const sharingOf = (tenant: Tenant) => tenant.sharing as Sharing[];
 
 export interface PolicyChange {
   at: Date;
@@ -430,13 +403,11 @@ export const policyLogOf = (tenant: string) => POLICY_LOG.filter((one) => one.te
 
 export function changeSharing(tenantId: string, field: string, after: SharingLevel, by: string, reason: string) {
   const tenant = tenantById(tenantId);
-  const list = sharingOf(tenant);
-  const index = list.findIndex((one) => one.field === field);
-  const before = list[index]!.level;
-  list[index] = { field, level: after };
+  const before = tenant.sharing.find((one) => one.field === field)!.level;
+  setSharing(tenantId, field, after);
   const admin = `${tenant.name} admin`;
   POLICY_LOG = [{ at: stamp(), tenant: tenantId, field, before, after, by, reason, notified: admin }, ...POLICY_LOG];
-  accessOf(tenant).unshift({ at: stamp(), who: `${by}, Sureel ops`, via: "Graph Console · sharing policy", what: `${field}: ${before} → ${after}. You were notified.` });
+  addAccess(tenantId, { at: stamp(), who: `${by}, Sureel ops`, via: "Graph Console · sharing policy", what: `${field}: ${before} → ${after}. You were notified.` });
   notify(admin, tenantId, `${field} is now ${after.toLowerCase()}.`);
   wrote();
 }
@@ -469,7 +440,7 @@ export function requestAudit(tenantId: string, who: string, field: string, windo
   const closes = new Date(opens.getTime() + window * 60_000);
   const id = `AR-${113 + AUDITS.length - 1}`;
   AUDITS = [{ id, tenant: tenantId, who, field, reason, window, opens, closes, about }, ...AUDITS];
-  accessOf(tenant).unshift({ at: opens, who: `${who}, Sureel ops`, via: `Graph Console · audit request ${id}`, what: `${field}, ${window}-minute window`, audit: true });
+  addAccess(tenantId, { at: opens, who: `${who}, Sureel ops`, via: `Graph Console · audit request ${id}`, what: `${field}, ${window}-minute window`, audit: true });
   notify(`${tenant.name} admin`, tenantId, `Audit request ${id} opened on ${field} for ${window} minutes.`);
   wrote();
   return id;
@@ -536,21 +507,3 @@ export function territoriesOn(claims: readonly Assertion[]): string[] {
   return [...new Set(["US", "GB", ...named, "FR", "JP"])];
 }
 
-/**
- * The claims a share total is made of in one territory — the standing OWNS claims there, today.
- * resolve.ts sums them in `shareTotals` without saying which they were; this reads the same
- * filter so a resolved value can link to its winning claims (logged: the resolver should return
- * them).
- */
-export function countedIn(assetId: string, country: string, at: Date = TODAY): Assertion[] {
-  return ASSERTIONS.filter(
-    (one) =>
-      one.assetId === assetId &&
-      one.interests.includes("Owns") &&
-      standing(one) &&
-      one.state !== "No authority" &&
-      covers(one.territory, country) &&
-      one.from <= at &&
-      (!one.to || at <= one.to),
-  );
-}

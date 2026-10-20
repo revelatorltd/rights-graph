@@ -482,7 +482,7 @@ export const PARTNERS: readonly Partner[] = [
 // ---------------------------------------------------------------------------------------------
 // Contributor tenants, batches, feeds, coverage, proof (S5, S7, S8)
 
-export const TENANTS: readonly Tenant[] = [
+export let TENANTS: Tenant[] = [
   {
     id: "p-meridian",
     name: "Meridian Music Group",
@@ -501,6 +501,23 @@ export const TENANTS: readonly Tenant[] = [
       { at: at(2026, 10, 19, 14, 40), who: "Lior Ben-Ami, Sureel ops", via: "Graph Console · audit request AR-112", what: "Agreement reference on 3 works, 30-minute window", audit: true },
       { at: at(2026, 10, 18, 9, 0), who: "Openwave Studios", via: "Splits API · ck_live_0b77", what: "Resolved splits, 211,056 assets" },
       { at: at(2026, 10, 17, 11, 25), who: "Meridian Music Group admin", via: "Contributor portal", what: "Own match results" },
+    ],
+  },
+  // A second contributor, onboarding — so the tenants are a set and not one record.
+  {
+    id: "p-arcade",
+    name: "Mistral Arcade Records",
+    sharing: [
+      { field: "ISRC, ISWC, UPC", level: "Shared" },
+      { field: "Titles, artists, writers", level: "Shared" },
+      { field: "Ownership share totals", level: "Private" },
+      { field: "Territories and terms", level: "Private" },
+      { field: "Agreement references", level: "Private" },
+      { field: "Royalty rates and advances", level: "Encrypted" },
+    ],
+    access: [
+      { at: at(2026, 10, 14, 0, 40), who: "Resolver v1.3", via: "Internal · match job MJ-8790", what: "Shared fields, 210,000 rows" },
+      { at: at(2026, 10, 13, 16, 2), who: "Mistral Arcade Records admin", via: "Contributor portal", what: "Own match results" },
     ],
   },
 ];
@@ -693,6 +710,34 @@ export function addAssertion(claim: Omit<Assertion, "id" | "known">) {
   ];
   wrote();
   return id;
+}
+/**
+ * Takes a claim back (G-1): the row stays, Withdrawn, and stops counting. When and by whom is kept
+ * on the claim, so a past reading still sees it standing before then.
+ */
+export function withdrawAssertion(id: string, by: string, at: Date = new Date()) {
+  ASSERTIONS = ASSERTIONS.map((one) => (one.id === id ? { ...one, state: "Withdrawn" as const, withdrawn: { at, by } } : one));
+  wrote();
+}
+/** A request into a party's inbox — newest first. Numbered after the highest id held. Returns its id. */
+export function addRequest(request: Omit<Request, "id">) {
+  const next = REQUESTS.reduce((most, one) => Math.max(most, Number(one.id.replace("rq-", "")) || 0), 0) + 1;
+  const id = `rq-${next}`;
+  REQUESTS = [{ ...request, id }, ...REQUESTS];
+  wrote();
+  return id;
+}
+/** A contributor tenant's sharing level for one field (S5-5, S7-8). */
+export function setSharing(tenantId: string, field: string, level: Tenant["sharing"][number]["level"]) {
+  TENANTS = TENANTS.map((one) =>
+    one.id === tenantId ? { ...one, sharing: one.sharing.map((each) => (each.field === field ? { ...each, level } : each)) } : one,
+  );
+  wrote();
+}
+/** A read of a tenant's data, logged at the top of its access log (S5-6). */
+export function addAccess(tenantId: string, entry: Tenant["access"][number]) {
+  TENANTS = TENANTS.map((one) => (one.id === tenantId ? { ...one, access: [entry, ...one.access] } : one));
+  wrote();
 }
 export function updateConflict(id: string, change: Partial<Conflict>) {
   CONFLICTS = CONFLICTS.map((one) => (one.id === id ? { ...one, ...change } : one));

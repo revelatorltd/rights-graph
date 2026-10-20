@@ -28,7 +28,6 @@ import {
   checkAgain,
   countryOf,
   requestLicence,
-  reasonFor,
   trackReceipt,
   type Ask,
 } from "./data";
@@ -184,7 +183,7 @@ export function Requests({ working }: { working: Working }) {
 function trackRows(ask: Ask) {
   const country = countryOf(ask.territory);
   return assetsOfAsk(ask).map((asset) => {
-    const now = clearanceOf(asset.id, ask.use, { partner: ask.partner, country });
+    const now = clearanceOf(asset.id, ask.use, { partner: ask.partner, country, audience: "partner" });
     return { asset, now, issued: trackReceipt(ask.id, asset.id) };
   });
 }
@@ -252,7 +251,7 @@ export function AskDetail({ ask, facet }: { ask: Ask; facet: AskFacet }) {
               cell: (one) =>
                 formatMeta(one.now.composition.map((side) => (side.party ? `${partyName(side.party)}: ${side.state}` : "No work link"))),
             },
-            { name: "Why", value: (one) => one.now.reason, cell: (one) => reasonFor(ask.partner, one.now) },
+            { name: "Why", value: (one) => one.now.reason, cell: (one) => one.now.reason },
             { name: "ISRC", as: "identifier", standard: "isrc", value: (one) => one.asset.isrc },
             { name: "Receipt", as: "identifier", standard: "id", value: (one) => one.issued?.receipt },
             { name: "Answered", as: "date", grain: "minute", value: (one) => one.issued?.asked },

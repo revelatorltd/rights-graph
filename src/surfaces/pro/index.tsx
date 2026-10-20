@@ -2,7 +2,7 @@ import { AppShell, usePersona, type ShellProduct } from "@revelator/pro-ui";
 import { ORGANIZATIONS } from "@revelator/pro-ui/assets";
 
 import { href } from "../../route";
-import type { PageOf } from "../surface";
+import { useShellPersona, type PageOf } from "../surface";
 import { CATALOG_PAGES } from "./catalog";
 import { LABEL_PAGES, LABEL_RIGHTS_NAV } from "./label";
 import { PUBLISHER_PAGES, PUBLISHER_RIGHTS_NAV } from "./publisher";
@@ -63,7 +63,7 @@ function productFor(persona: Persona): ShellProduct {
 
 /** `#/pro/<section>/<page>/<id>/<facet>` */
 export function RevelatorPro({ path }: { path: readonly string[] }) {
-  const persona = usePersonaOf();
+  const [persona, follow] = useShellPersona(PERSONAS, "Label");
   const [section = "rights", page = "overview", ...rest] = path;
   const pages: Record<string, PageOf> =
     section === "catalog" ? CATALOG_PAGES : persona === "Label" ? LABEL_PAGES : PUBLISHER_PAGES;
@@ -72,6 +72,7 @@ export function RevelatorPro({ path }: { path: readonly string[] }) {
   if ("cover" in shown) return shown.cover;
   return (
     <AppShell product={productFor(persona)} place={shown.place}>
+      {follow}
       {shown.page}
     </AppShell>
   );

@@ -2,7 +2,6 @@ import { formatMeta } from "@revelator/pro-ui";
 
 import {
   AGREEMENTS,
-  ASSERTIONS,
   ASSETS,
   ATTESTATIONS,
   CONFLICTS,
@@ -11,10 +10,12 @@ import {
   REQUESTS,
   TODAY,
   addAttestation,
+  addRequest,
   addGrant,
   assetById,
   partyName,
   wrote,
+  withdrawAssertion,
 } from "../../../graph/fixtures";
 import {
   AI_USES,
@@ -205,21 +206,13 @@ export function exported(format: string, of: string, graph: string) {
   wrote();
 }
 
-/**
- * A claim the label withdraws — never deleted (G-1): the row stays, standing no longer. The shared
- * array is replaced element by element, as its own setters replace it.
- */
+/** A claim the label withdraws — never deleted (G-1): the row stays, standing no longer. */
 export function withdrawClaims(ids: readonly string[]) {
-  for (const id of ids) {
-    const at = ASSERTIONS.findIndex((one) => one.id === id);
-    if (at >= 0) ASSERTIONS.splice(at, 1, { ...ASSERTIONS[at]!, state: "Withdrawn" });
-  }
+  for (const id of ids) withdrawAssertion(id, ME.name, NOW);
 }
 
 /** A request the graph sends a party — the artist's notice that the label attested on their behalf. */
-export function notify(request: Omit<Request, "id">) {
-  REQUESTS.unshift({ ...request, id: `rq-${3000 + REQUESTS.length}` });
-}
+export const notify = (request: Omit<Request, "id">) => addRequest(request);
 
 export const decision = (onBehalfOf: string, authority?: string): Decision => ({ actor: ME.name, onBehalfOf, authority, at: NOW });
 

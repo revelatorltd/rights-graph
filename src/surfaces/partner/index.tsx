@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { AppShell, usePersona, type ShellProduct } from "@revelator/pro-ui";
+import { AppShell, type ShellProduct } from "@revelator/pro-ui";
 import { ORGANIZATIONS } from "@revelator/pro-ui/assets";
 
 import { href } from "../../route";
+import { useShellPersona } from "../surface";
 import { PERSONAS, WORKING_AS, partnerOf, type Persona } from "./data";
 import { KEYS_PAGES } from "./keys";
 import { LOOKUP_PAGES } from "./lookups";
@@ -112,23 +112,9 @@ const workingAs = (persona: Persona): Working => {
   return { persona, partner: partnerOf(as.partner), user: as.user };
 };
 
-/**
- * The persona the shell's own switch holds, handed back out. The switch lives inside the shell
- * and the product is drawn around it, so without this the workspace and the nav would keep the
- * persona the page opened on (docs/gaps/s6-partner.md).
- */
-function Follow({ onPersona }: { onPersona: (persona: Persona) => void }) {
-  const chosen = usePersona(PERSONAS) as Persona | undefined;
-  useEffect(() => {
-    if (chosen) onPersona(chosen);
-  }, [chosen, onPersona]);
-  return null;
-}
-
 /** `#/partner/<page>/<id>/<facet>` */
 export function PartnerPortal({ path }: { path: readonly string[] }) {
-  const addressed = (usePersona(PERSONAS) as Persona | undefined) ?? "Cadence AI";
-  const [persona, setPersona] = useState<Persona>(addressed);
+  const [persona, follow] = useShellPersona(PERSONAS, "Cadence AI");
   const working = workingAs(persona);
   const society = working.partner.kind === "Society";
   const [page = "overview", ...rest] = path;
@@ -139,7 +125,7 @@ export function PartnerPortal({ path }: { path: readonly string[] }) {
   if ("cover" in shown) return shown.cover;
   return (
     <AppShell product={productFor(working)} place={shown.place}>
-      <Follow onPersona={setPersona} />
+      {follow}
       {shown.page}
     </AppShell>
   );

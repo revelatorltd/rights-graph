@@ -12,19 +12,29 @@ import {
   TODAY,
   addAssertion,
   addConflict,
-  agreementById,
   assetById,
   partyName,
   updateConflict,
-  wrote,
+  withdrawAssertion,
 } from "../../../graph/fixtures";
 import type { Assertion, Asset, AssetKind, Interest, Side, SourceKind, TerritorySet, Use } from "../../../graph/model";
 import { PRECEDENCE, USES } from "../../../graph/model";
-import { clearanceOf, controllers, covers, recordingsOf, shareTotals, standing, territoryLabel, worksOf } from "../../../graph/resolve";
+import {
+  clearanceOf,
+  controllers,
+  covers,
+  recordingsOf,
+  shareTotals,
+  standing,
+  stateForNewClaim,
+  territoryLabel,
+  worksOf,
+  type NewClaim,
+} from "../../../graph/resolve";
 
 /**
- * What the catalogue's pages read off the shared graph, by id — and the one write the shared
- * setters lack (withdrawing a claim). Nothing here decides ownership or clearance: every answer is
+ * What the catalogue's pages read off the shared graph, by id, and the writes they make through
+ * its setters. Nothing here decides ownership or clearance: every answer is
  * `resolve.ts`'s, and what this file adds is which of its answers a page asks for, and in what words.
  */
 
@@ -114,6 +124,8 @@ export interface Reading {
 }
 export const NOW: Reading = { asOf: TODAY, knownAt: TODAY };
 export const isPast = (reading: Reading) => !sameDay(reading.asOf, TODAY) || !sameDay(reading.knownAt, TODAY);
+/** The system time the resolver is asked at: the end of the day picked, in a past state — none today. */
+export const knownBy = (reading: Reading) => (isPast(reading) ? endOf(reading.knownAt) : undefined);
 
 const live = (claim: Assertion, at: Date) => claim.from <= endOf(at) && (!claim.to || at <= claim.to);
 
@@ -137,7 +149,9 @@ export function claimsOn(assetId: string, reading: Reading): Assertion[] {
  * replacement is said beside it.
  */
 export function stateThen(claim: Assertion, reading: Reading): Assertion["state"] {
-  if (!isPast(reading) || claim.state !== "Superseded") return claim.state;
+  if (!isPast(reading)) return claim.state;
+  if (claim.state === "Withdrawn") return claim.withdrawn && claim.withdrawn.at > endOf(reading.knownAt) ? "Resolved" : claim.state;
+  if (claim.state !== "Superseded") return claim.state;
   const by = supersederOf(claim);
   return by && by.known > endOf(reading.knownAt) ? "Resolved" : claim.state;
 }
@@ -197,7 +211,7 @@ export interface Against {
  * The graph's answer next to one claim, in the claim's own territory and on the day read — what
  * the resolver pays and why that is not what the claim says, where it is not.
  */
-export function against(claim: Assertion, at: Date = TODAY): Against {
+export function against(claim: Assertion, at: Date = TODAY, knownAt?: Date): Against {
   const country = countryOfClaim(claim);
   const where = countryWords(country, claim);
   const party = partyName(claim.partyId);
@@ -209,7 +223,7 @@ export function against(claim: Assertion, at: Date = TODAY): Against {
     };
   }
   if (claim.state === "Withdrawn") return { says: `${party} took this claim back. It no longer counts.`, differs: false };
-  const holders = controllers(claim.assetId, claim.side, country, at).map((one) => partyName(one.partyId));
+  const holders = controllers(claim.assetId, claim.side, country, at, knownAt).map((one) => partyName(one.partyId));
   if (claim.state === "No authority")
     return {
       says: holders.length ? `${formatList(holders)} controls the ${claim.side.toLowerCase()} in ${where}.` : `No one controls the ${claim.side.toLowerCase()} in ${where}.`,
@@ -217,7 +231,7 @@ export function against(claim: Assertion, at: Date = TODAY): Against {
       why: `${party} holds no controlling edge there and then: the claim is stored and flagged, and never counts.`,
     };
   if (claim.interests.includes("Owns")) {
-    const total = shareTotals(claim.assetId, country, at).find((one) => one.shareType === claim.shareType);
+    const total = shareTotals(claim.assetId, country, at, knownAt).find((one) => one.shareType === claim.shareType);
     const paid = ASSERTIONS.filter(
       (one) =>
         one.assetId === claim.assetId &&
@@ -275,15 +289,11 @@ export interface ClaimDraft {
  * the whole, opens the overclaim the resolver's invariant asks for. Returns the claim and the
  * conflict it opened, if any.
  *
- * The state a new claim is written in is a stand-in for the resolver's write-time check (gap):
- * Contested where the shares now pass 100%, No authority where a controlling claim cites an
- * agreement that does not reach its territory, otherwise Resolved.
+ * The state a new claim is written in is the resolver's write-time check (`stateForNewClaim`),
+ * asked in every country that tells the asset's claims apart.
  */
 export function writeClaim(draft: ClaimDraft, actor: string): { id: string; conflict?: string; replaced?: string } {
-  const agreement = draft.agreementId ? agreementById(draft.agreementId) : undefined;
-  const codes = countriesOf([draft.assetId]).filter((one) => covers(draft.territory, one));
-  const reaches = !agreement || codes.every((one) => covers(agreement.territory, one));
-  const id = addAssertion({
+  const claim: NewClaim = {
     assetId: draft.assetId,
     partyId: draft.partyId,
     interests: draft.interests,
@@ -299,13 +309,10 @@ export function writeClaim(draft: ClaimDraft, actor: string): { id: string; conf
     agreementId: draft.agreementId,
     supersedes: draft.supersedes,
     evidence: draft.evidence,
-    state: draft.interests.includes("Controls") && !reaches ? "No authority" : "Resolved",
-  });
-
+  };
+  const { state, over } = stateForNewClaim(claim, countriesOf([draft.assetId]));
+  const id = addAssertion({ ...claim, state });
   const at = draft.from > TODAY ? draft.from : TODAY;
-  const over = draft.interests.includes("Owns")
-    ? codes.filter((one) => shareTotals(draft.assetId, one, at).some((total) => total.shareType === draft.shareType && total.state === "Overclaim"))
-    : [];
 
   // A correction that brings the shares back to the whole closes the overclaim it was part of.
   let replaced: string | undefined;
@@ -322,7 +329,6 @@ export function writeClaim(draft: ClaimDraft, actor: string): { id: string; conf
   }
   if (!over.length) return { id, replaced };
 
-  setClaimState(id, "Contested");
   const asset = assetById(draft.assetId);
   const totals = over.map((one) => shareTotals(draft.assetId, one, at).find((total) => total.shareType === draft.shareType)!.total);
   const total = Math.max(...totals);
@@ -356,22 +362,12 @@ export function writeClaim(draft: ClaimDraft, actor: string): { id: string; conf
   return { id, conflict };
 }
 
-function setClaimState(id: string, state: Assertion["state"]) {
-  const at = ASSERTIONS.findIndex((one) => one.id === id);
-  if (at >= 0) ASSERTIONS[at] = { ...ASSERTIONS[at]!, state };
-}
+/** When a claim was taken back, and by whom — the graph keeps it on the claim. */
+export const withdrawnAt = (id: string) => ASSERTIONS.find((one) => one.id === id)?.withdrawn;
 
-/** When each claim taken back this session was taken back — the model holds no such time (gap). */
-const WITHDRAWN = new Map<string, { at: Date; by: string }>();
-export const withdrawnAt = (id: string) => WITHDRAWN.get(id);
-
-/**
- * Takes a claim back. The shared setters have no withdrawal, so it is written here against the
- * claims array, in place: the row stays, Withdrawn. An overclaim it alone was making closes.
- */
+/** Takes a claim back: the row stays, Withdrawn. An overclaim it alone was making closes. */
 export function withdrawClaim(claim: Assertion, actor: string) {
-  setClaimState(claim.id, "Withdrawn");
-  WITHDRAWN.set(claim.id, { at: new Date(), by: actor });
+  withdrawAssertion(claim.id, actor);
   // Only an overclaim can close by a claim leaving it: a gap or an overlap is still there without it.
   for (const open of CONFLICTS.filter((one) => one.state !== "Resolved" && one.kind === "Overclaim" && one.claims.includes(claim.id))) {
     const still = open.territories.some((code) =>
@@ -384,7 +380,6 @@ export function withdrawClaim(claim: Assertion, actor: string) {
         resolution: { actor, at: TODAY, reason: `${partyName(claim.partyId)} withdrew its claim.` },
       });
   }
-  wrote();
 }
 
 /** The agreements a party can cite: those it is a party to. */
@@ -405,10 +400,28 @@ export const assetsUnder = (asset: Asset): Asset[] => {
   return [...new Map(all.map((one) => [one.id, one])).values()];
 };
 
-/** How many uses come back granted, denied or to review, for the default ask. */
+/**
+ * The country an at-a-glance clearance asks in: the United States where the master is controlled
+ * there, else the first country the asset's claims name where it is (else everywhere else). Asked
+ * only in the US, a master licensed outside it — Lowlight, Glass Coast, World excl. US, CA — would
+ * read 0 of 8 for want of a holder, not for want of consent; the glance says where it asked.
+ */
+export function glanceCountry(asset: Asset): string {
+  const masters = masterAssets(asset);
+  const held = (country: string) => masters.some((one) => controllers(one.id, "Master", country).length > 0);
+  if (held("US")) return "US";
+  return countriesOf(masters.map((one) => one.id)).find(held) ?? "US";
+}
+
+/** Where a glance asked, as a territory reads: the code, or "World excl. …" for everywhere else. */
+export const glancePlace = (asset: Asset, code: string) => placesLabel([code], countriesOf(masterAssets(asset).map((one) => one.id)));
+
+/** How many uses come back granted, denied or to review, for the default ask — and where it asked. */
 export function clearanceCounts(assetId: string, ask: { partner?: string; country?: string } = {}) {
-  const answers = USES.map((use) => clearanceOf(assetId, use, ask).state);
+  const country = ask.country ?? glanceCountry(assetById(assetId));
+  const answers = USES.map((use) => clearanceOf(assetId, use, { ...ask, country }).state);
   return {
+    country,
     granted: answers.filter((one) => one === "Granted").length,
     denied: answers.filter((one) => one === "Denied").length,
     review: answers.filter((one) => one === "Needs review").length,
@@ -483,7 +496,7 @@ export function historyOf(asset: Asset): Event[] {
     };
   });
   for (const one of claims) {
-    const withdrawn = WITHDRAWN.get(one.id);
+    const withdrawn = one.withdrawn;
     if (withdrawn)
       events.push({ id: `withdrawn-${one.id}`, name: "Claim withdrawn", what: formatMeta([title(one.assetId), shareWords(one), territoryLabel(one.territory)]) ?? "", who: withdrawn.by, at: withdrawn.at, status: "claim:Withdrawn" });
   }

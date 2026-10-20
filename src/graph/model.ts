@@ -165,6 +165,8 @@ export interface Assertion {
   state: "Resolved" | "Contested" | "No authority" | "Superseded" | "Withdrawn";
   /** Evidence uploaded with the claim. */
   evidence?: readonly string[];
+  /** When, and by whom, a withdrawn claim was taken back (system time). */
+  withdrawn?: { at: Date; by: string };
 }
 
 export interface Agreement {

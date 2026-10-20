@@ -23,6 +23,7 @@ import type { Assertion, Asset, AssetKind, Side } from "../../graph/model";
 import {
   GRAPH_VERSION,
   RULE_VERSION,
+  claimsBehind,
   clearanceOf,
   controllers,
   shareTotals,
@@ -33,7 +34,7 @@ import {
 } from "../../graph/resolve";
 import { ClearanceBadge, TerritoryChip, TierChip, decidedBy, partyMark } from "../../rights/kit";
 import type { Shown } from "../surface";
-import { countedIn, territoriesOn } from "./data";
+import { territoriesOn } from "./data";
 import { assetMark } from "./marks";
 import { consoleHref, facetOf } from "./where";
 
@@ -265,7 +266,7 @@ function resolvedOf(asset: Asset): Resolved[] {
   for (const { side, of } of sides) {
     for (const territory of territoriesOn(ASSERTIONS.filter((one) => one.assetId === of.id))) {
       for (const total of shareTotals(of.id, territory)) {
-        const counted = countedIn(of.id, territory).filter((one) => one.shareType === total.shareType);
+        const counted = claimsBehind(of.id, territory).filter((one) => one.shareType === total.shareType);
         add({ side, of, value: `${total.shareType} share`, total: total.total, reads: total.state, claims: counted }, territory);
       }
       const held = controllers(of.id, side, territory);

@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { AppShell, type ShellProduct } from "@revelator/pro-ui";
 import { ORGANIZATIONS } from "@revelator/pro-ui/assets";
 
-import type { Shown } from "../surface";
+import { useShellPersona, type Shown } from "../surface";
 import { AssetsPage, AssetPage, ClaimPage } from "./assets";
 import { ClaimantsPage } from "./claimants";
 import { ConflictPage } from "./conflict";
@@ -13,7 +13,7 @@ import { MatchesPage, MatchReviewPage, MergePage, MergesPage } from "./matching"
 import { ProofPage } from "./proof";
 import { RulePage, RulesPage } from "./rules";
 import { TenantPage, TenantsPage } from "./tenants";
-import { PERSONAS, SIGNED_IN, consoleHref, usePersonaOf, type ConsolePage, type Persona } from "./where";
+import { PERSONAS, SIGNED_IN, consoleHref, type ConsolePage, type Persona } from "./where";
 
 /**
  * The Sureel Graph Console (S7) — where the graph is run. Imitates RCC, Revelator's own ops console:
@@ -99,13 +99,14 @@ const PAGES: Record<ConsolePage, (rest: readonly string[], persona: Persona) => 
 
 /** `#/console/<page>/<id>/<facet>` — the home view is ingestion health (S7-1). */
 export function GraphConsole({ path }: { path: readonly string[] }) {
-  const persona = usePersonaOf();
+  const [persona, follow] = useShellPersona(PERSONAS, "Rights ops");
   const [page = "health", ...rest] = path;
   const found = PAGES[page as ConsolePage] ?? PAGES.health;
   const shown = found(rest, persona);
   if ("cover" in shown) return shown.cover;
   return (
     <AppShell product={productFor(persona)} place={shown.place}>
+      {follow}
       {/* KEYED by the whole address, so a second index opens fresh rather than inheriting the
           first one's filters, reading and sort. */}
       <Fragment key={[page, ...rest].join("/")}>{shown.page}</Fragment>

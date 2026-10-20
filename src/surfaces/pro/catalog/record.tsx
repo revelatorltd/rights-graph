@@ -30,6 +30,7 @@ import {
   attestationsOn,
   claimsOn,
   clearanceCounts,
+  glancePlace,
   creditsOn,
   historyOf,
   isPast,
@@ -180,7 +181,11 @@ function AssetOverview({ asset }: { asset: Asset }) {
         <FacetCard
           title="Clearances"
           opens={facetHref(asset, "Clearances")}
-          hint="For any approved partner, in the United States, today."
+          hint={
+            counts.country === "US"
+              ? "For any approved partner, in the United States, today."
+              : `For any approved partner, in ${glancePlace(asset, counts.country)} — where the master is controlled — today.`
+          }
           figures={[
             { label: "Granted", as: "count", value: counts.granted },
             { label: "Denied", as: "count", value: counts.denied },

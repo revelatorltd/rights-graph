@@ -7,7 +7,10 @@ import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const folder = join(root, "docs/gaps");
-const plain = (cell) => cell.replace(/\*\*/g, "").replace(/`/g, "").trim();
+const plain = (cell) => {
+  const text = cell.replace(/\*\*/g, "").replace(/`/g, "").trim();
+  return /^[—–-]$/.test(text) ? "" : text;
+};
 const gaps = [];
 for (const file of readdirSync(folder).filter((one) => one.endsWith(".md")).sort()) {
   const text = readFileSync(join(folder, file), "utf8");
@@ -25,16 +28,6 @@ for (const file of readdirSync(folder).filter((one) => one.endsWith(".md")).sort
     gaps.push({ surface: title, id, asked, frd, here });
   }
 }
-const out = `/** GENERATED from docs/gaps/*.md by scripts/gaps.mjs — every gap a surface logged. */
-export interface Gap {
-  surface: string;
-  id: string;
-  asked: string;
-  frd: string;
-  here: string;
-}
-
-export const GAPS: readonly Gap[] = ${JSON.stringify(gaps, null, 2)};
-`;
-writeFileSync(join(root, "src/surfaces/home/gaps.ts"), out);
+// DATA, not code: the rows are prose quoted from the logs, read by the Gaps page as written.
+writeFileSync(join(root, "src/surfaces/home/gaps.json"), `${JSON.stringify(gaps, null, 2)}\n`);
 console.log(`${gaps.length} gaps from ${new Set(gaps.map((one) => one.surface)).size} surfaces`);

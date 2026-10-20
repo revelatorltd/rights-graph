@@ -1,7 +1,7 @@
 import { AppShell, usePersona, type ShellDestination, type ShellProduct } from "@revelator/pro-ui";
 import { ORGANIZATIONS } from "@revelator/pro-ui/assets";
 
-import type { Shown } from "../surface";
+import { useShellPersona, type Shown } from "../surface";
 import { activityPage } from "./activity";
 import { assetPage } from "./asset";
 import { clearedPage } from "./cleared";
@@ -102,7 +102,7 @@ const PAGES: Record<string, (reader: Reader, rest: readonly string[]) => Shown> 
 
 /** `#/artist/<page>/<id>/<facet>` */
 export function ArtistApp({ path }: { path: readonly string[] }) {
-  const persona = usePersonaOf();
+  const [persona, follow] = useShellPersona(PERSONAS, "Artist");
   const reader = readerOf(persona);
   const [page = "home", ...rest] = path;
   // Works is writer mode's: another reader landing on its address is taken Home.
@@ -111,6 +111,7 @@ export function ArtistApp({ path }: { path: readonly string[] }) {
   if ("cover" in shown) return shown.cover;
   return (
     <AppShell product={productFor(persona)} place={shown.place}>
+      {follow}
       {shown.page}
     </AppShell>
   );

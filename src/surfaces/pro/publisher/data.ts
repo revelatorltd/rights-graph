@@ -14,11 +14,12 @@ import {
   partyName,
   recordings,
   updateConflict,
+  withdrawAssertion,
   works,
   wrote,
 } from "../../../graph/fixtures";
 import type { Agreement, Assertion, Asset, Conflict, Interest, RightType, ShareType, TerritorySet } from "../../../graph/model";
-import { covers, shareTotals, standing, worksOf } from "../../../graph/resolve";
+import { covers, shareTotals, standing, stateForNewClaim, worksOf, type NewClaim } from "../../../graph/resolve";
 import { href } from "../../../route";
 
 /**
@@ -615,33 +616,25 @@ export interface ClaimDraft {
 }
 
 /**
- * Whether a claim would take a share type over 100% somewhere the work is read — the resolver's
- * own count (one party's largest standing claim), asked ahead of the write so the claim is stored
- * as contested and the conflict opens with it. The resolver should do this on write (gaps).
+ * Where a claim opens a conflict: the territories the resolver's write-time check finds it
+ * overclaiming in — only where THIS claim is the one counted (a larger claim of Harbor's already
+ * decides elsewhere) and where no open conflict already holds the territory.
  */
-function overclaimsWith(draft: ClaimDraft): string[] {
-  const work = assetById(draft.workId);
-  return territoriesOf(work).filter((country) => {
-    if (!covers(draft.territory, country) || !draft.interests.includes("Owns")) return false;
-    const total = shareTotals(draft.workId, country).find((one) => one.shareType === "Publisher")?.total ?? 0;
+function overclaimsWith(draft: ClaimDraft, over: readonly string[]): string[] {
+  return over.filter((country) => {
     const mine = myClaims(draft.workId).filter(
       (one) => standing(one) && one.id !== draft.supersedes && one.interests.includes("Owns") && one.shareType === "Publisher" && covers(one.territory, country),
     );
     const held = Math.max(0, ...mine.map((one) => one.share));
-    const before = myClaims(draft.workId).filter((one) => standing(one) && one.interests.includes("Owns") && one.shareType === "Publisher" && covers(one.territory, country));
-    const counted = Math.max(0, ...before.map((one) => one.share));
-    // Only where THIS claim is the one counted — a larger claim of Harbor's already decides
-    // elsewhere — and where no open conflict already holds the territory.
     const already = CONFLICTS.some((one) => one.assetId === draft.workId && one.state !== "Resolved" && one.territories.includes(country));
-    return draft.share > held && total - counted + draft.share > 100 && !already;
+    return draft.share > held && !already;
   });
 }
 
 /** Writes Harbor's claim — new, or a correction that supersedes the old row, which stays. */
 export function writeClaim(draft: ClaimDraft) {
   const agreement = AGREEMENTS.find((one) => one.id === draft.agreementId);
-  const over = overclaimsWith(draft);
-  const id = addAssertion({
+  const claim: NewClaim = {
     assetId: draft.workId,
     partyId: ME,
     interests: draft.interests,
@@ -658,8 +651,10 @@ export function writeClaim(draft: ClaimDraft) {
     agreementId: agreement?.id,
     supersedes: draft.supersedes,
     evidence: draft.evidence,
-    state: over.length ? "Contested" : "Resolved",
-  });
+  };
+  const checked = stateForNewClaim(claim, territoriesOf(assetById(draft.workId)));
+  const over = checked.state === "No authority" ? [] : overclaimsWith(draft, checked.over);
+  const id = addAssertion({ ...claim, state: checked.state === "No authority" ? "No authority" : over.length ? "Contested" : "Resolved" });
   if (over.length) {
     const work = assetById(draft.workId);
     const others = [...new Set(ASSERTIONS.filter((one) => one.assetId === work.id && standing(one) && one.shareType === "Publisher" && one.partyId !== ME).map((one) => one.partyId))];
@@ -689,7 +684,7 @@ export function writeClaim(draft: ClaimDraft) {
  * claim alone kept open closes with it, its reason the withdrawal; Sureel ops resolve the rest.
  */
 export function withdrawClaim(claim: Assertion) {
-  addAssertion({ ...claim, supersedes: claim.id, state: "Withdrawn", sourceRef: `Withdrawn by ${MY_NAME}` });
+  withdrawAssertion(claim.id, `${ACTOR}, ${MY_NAME}`, now());
   for (const conflict of CONFLICTS.filter((one) => one.state !== "Resolved" && one.claims.includes(claim.id))) {
     const still = conflict.territories.some((country) => shareTotals(conflict.assetId, country).some((one) => one.state === "Overclaim"));
     if (!still)

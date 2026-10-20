@@ -45,6 +45,7 @@ import {
   datesWords,
   interestWords,
   isPast,
+  knownBy,
   masterAssets,
   openConflictsOn,
   rightsWords,
@@ -141,8 +142,8 @@ export function RightsFacet({
         </AlertGroup>
       ) : null}
       <CardGrid columns={2}>
-        <MasterResolved asset={asset} at={reading.asOf} />
-        <CompositionResolved asset={asset} at={reading.asOf} persona={persona} past={past} />
+        <MasterResolved asset={asset} at={reading.asOf} knownAt={knownBy(reading)} />
+        <CompositionResolved asset={asset} at={reading.asOf} knownAt={knownBy(reading)} persona={persona} past={past} />
         <TitledCard
           title={asset.kind === "Video" ? "Master claims, with what it contains" : "Master claims"}
           count={masters.flatMap((one) => claimsOn(one.id, reading)).length}
@@ -180,13 +181,13 @@ export function RightsFacet({
 }
 
 /** The master, as the graph resolved it: who controls it and its share, run by run of territory. */
-function MasterResolved({ asset, at }: { asset: Asset; at: Date }) {
+function MasterResolved({ asset, at, knownAt }: { asset: Asset; at: Date; knownAt?: Date }) {
   const places = countriesOf(masterAssets(asset).map((one) => one.id));
   const runs = byPlace(
     places,
     (country) => ({
-      holders: controllers(asset.id, "Master", country, at),
-      total: shareTotals(asset.id, country, at).find((one) => one.shareType === "Master"),
+      holders: controllers(asset.id, "Master", country, at, knownAt),
+      total: shareTotals(asset.id, country, at, knownAt).find((one) => one.shareType === "Master"),
     }),
     (value) => `${value.holders.map((one) => one.id).join()}/${value.total?.total ?? 0}`,
   );
@@ -228,7 +229,7 @@ const workLine = (work: Asset, link: NonNullable<Asset["embodies"]>[number] | un
  * lines and never one — and who controls it, run by run of territory. A missing link is said for
  * what it is, unmatched publishing money, with the way to the link.
  */
-function CompositionResolved({ asset, at, persona, past }: { asset: Asset; at: Date; persona: Persona; past: boolean }) {
+function CompositionResolved({ asset, at, knownAt, persona, past }: { asset: Asset; at: Date; knownAt?: Date; persona: Persona; past: boolean }) {
   const linked = worksOf(asset);
   if (!linked.length) {
     const unlinked = asset.kind === "Video" ? recordingsOf(asset).find((one) => worksOf(one).length === 0) : asset;
@@ -255,8 +256,8 @@ function CompositionResolved({ asset, at, persona, past }: { asset: Asset; at: D
     const runs = byPlace(
       countriesOf([work.id]),
       (country) => ({
-        totals: shareTotals(work.id, country, at),
-        holders: [...new Set(controllers(work.id, "Composition", country, at).map((one) => partyName(one.partyId)))],
+        totals: shareTotals(work.id, country, at, knownAt),
+        holders: [...new Set(controllers(work.id, "Composition", country, at, knownAt).map((one) => partyName(one.partyId)))],
       }),
       (value) => JSON.stringify(value),
     );
@@ -320,7 +321,7 @@ function ClaimRows({
     <Slot layout="list">
       {order.map((one) => {
         const own = one.partyId === reader;
-        const differs = own && against(one, reading.asOf).differs;
+        const differs = own && against(one, reading.asOf, knownBy(reading)).differs;
         return (
           <SlotItem key={one.id} opens={() => onOpen(one.id)} trail={<Badge status={`claim:${stateThen(one, reading)}`} />}>
             {partyMark(one.partyId)}
@@ -375,7 +376,7 @@ function ClaimDrawer({
   onClose: () => void;
 }) {
   const asset = claim ? assetById(claim.assetId) : undefined;
-  const answer = claim ? against(claim, reading.asOf) : undefined;
+  const answer = claim ? against(claim, reading.asOf, knownBy(reading)) : undefined;
   const agreement = claim?.agreementId ? agreementById(claim.agreementId) : undefined;
   const own = claim?.partyId === reader;
   const standingNow = claim && claim.state !== "Superseded" && claim.state !== "Withdrawn";

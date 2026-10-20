@@ -9,6 +9,7 @@ import {
   GRANTS,
   REQUESTS,
   TODAY,
+  agreementById,
   assetById,
   partyName,
   snapshot,
@@ -99,25 +100,53 @@ export function performersOf(asset: Asset): string[] {
 /** The claims that count — not superseded, not withdrawn. */
 export const standing = (one: Assertion) => one.state !== "Superseded" && one.state !== "Withdrawn";
 
-/** The parties holding a CONTROLS edge on an asset's side, in a territory, on a date. */
-export function controllers(assetId: string, side: Side, country: string, at: Date = TODAY): Assertion[] {
+/**
+ * System time. Read as the graph knew it at `knownAt`: a claim we had not yet learned of is not
+ * there, and one superseded or withdrawn after it still stands. A claim's supersession is dated by
+ * the `known` of the claim that replaced it; a withdrawal by its own `withdrawn.at`.
+ */
+function knownThen(one: Assertion, knownAt: Date | undefined): boolean {
+  if (!knownAt) return standing(one);
+  if (one.known > knownAt) return false;
+  if (one.state === "Superseded") {
+    const by = ASSERTIONS.find((each) => each.supersedes === one.id);
+    return Boolean(by && by.known > knownAt);
+  }
+  if (one.state === "Withdrawn") return Boolean(one.withdrawn && one.withdrawn.at > knownAt);
+  return true;
+}
+
+/** The parties holding a CONTROLS edge on an asset's side, in a territory, on a date — as known at `knownAt`, if asked. */
+export function controllers(assetId: string, side: Side, country: string, at: Date = TODAY, knownAt?: Date): Assertion[] {
   return ASSERTIONS.filter(
     (one) =>
       one.assetId === assetId &&
       one.side === side &&
       one.interests.includes("Controls") &&
       one.state !== "No authority" &&
-      standing(one) &&
+      knownThen(one, knownAt) &&
       covers(one.territory, country) &&
       live(one.from, one.to, at),
   );
 }
 
-/** The resolved owner share per share type in one territory — and whether it over- or under-claims. */
-export function shareTotals(assetId: string, country: string, at: Date = TODAY) {
-  const owning = ASSERTIONS.filter(
-    (one) => one.assetId === assetId && one.interests.includes("Owns") && standing(one) && one.state !== "No authority" && covers(one.territory, country) && live(one.from, one.to, at),
+/**
+ * The ownership claims `shareTotals` counts in one territory on a date: standing, with authority,
+ * live. One party's claims never add to each other — its largest per share type is what it claims.
+ */
+export function claimsBehind(assetId: string, country: string, at: Date = TODAY, knownAt?: Date, among: readonly Assertion[] = ASSERTIONS): Assertion[] {
+  return among.filter(
+    (one) =>
+      one.assetId === assetId &&
+      one.interests.includes("Owns") &&
+      knownThen(one, knownAt) &&
+      one.state !== "No authority" &&
+      covers(one.territory, country) &&
+      live(one.from, one.to, at),
   );
+}
+
+function totalsOf(owning: readonly Assertion[]) {
   // One party's claims never add to each other: its largest standing claim is what it claims.
   const byParty = new Map<string, Assertion>();
   for (const one of owning) {
@@ -126,7 +155,45 @@ export function shareTotals(assetId: string, country: string, at: Date = TODAY) 
   }
   const byType = new Map<string, number>();
   for (const one of byParty.values()) byType.set(one.shareType, (byType.get(one.shareType) ?? 0) + one.share);
-  return [...byType.entries()].map(([shareType, total]) => ({ shareType, total, state: total > 100 ? "Overclaim" : total < 100 ? "Gap" : "Whole" }));
+  return [...byType.entries()].map(([shareType, total]) => ({
+    shareType,
+    total,
+    state: (total > 100 ? "Overclaim" : total < 100 ? "Gap" : "Whole") as "Overclaim" | "Gap" | "Whole",
+  }));
+}
+
+/** The resolved owner share per share type in one territory — and whether it over- or under-claims. */
+export function shareTotals(assetId: string, country: string, at: Date = TODAY, knownAt?: Date) {
+  return totalsOf(claimsBehind(assetId, country, at, knownAt));
+}
+
+/** A claim as a caller drafts it, before the graph stores it — the state is the graph's to decide. */
+export type NewClaim = Omit<Assertion, "id" | "known" | "state">;
+
+/**
+ * The resolver's check on write: the state a new claim is stored in, and the territories (of
+ * those asked) where it would take its share type past 100%.
+ *
+ * - No authority — a controlling claim citing an agreement that does not reach every territory asked;
+ * - Contested — it would overclaim somewhere asked;
+ * - Resolved — otherwise.
+ *
+ * Totals are read on the claim's first day, or today if that has passed, with the claim it
+ * supersedes gone.
+ */
+export function stateForNewClaim(claim: NewClaim, countries: readonly string[]): { state: Assertion["state"]; over: string[] } {
+  const asked = countries.filter((one) => covers(claim.territory, one));
+  const agreement = claim.agreementId ? agreementById(claim.agreementId) : undefined;
+  const reaches = !agreement || asked.every((one) => covers(agreement.territory, one));
+  if (claim.interests.includes("Controls") && !reaches) return { state: "No authority", over: [] };
+  if (!claim.interests.includes("Owns")) return { state: "Resolved", over: [] };
+  const at = claim.from > TODAY ? claim.from : TODAY;
+  const drafted: Assertion = { ...claim, id: "drafted", known: TODAY, state: "Resolved" };
+  const among = [drafted, ...ASSERTIONS.filter((one) => one.id !== claim.supersedes)];
+  const over = asked.filter((country) =>
+    totalsOf(claimsBehind(claim.assetId, country, at, undefined, among)).some((one) => one.shareType === claim.shareType && one.state === "Overclaim"),
+  );
+  return { state: over.length ? "Contested" : "Resolved", over };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -161,6 +228,11 @@ export interface Ask {
   partner?: string;
   country?: string;
   at?: Date;
+  /**
+   * Who is told. A holder reads every partner its allowlist names; a partner — `"partner"`, with
+   * `partner` set — is told only of itself: another partner on the list is the holder's business.
+   */
+  audience?: "holder" | "partner";
 }
 
 const partnerFits = (grant: Grant, partner: string | undefined) => {
@@ -200,13 +272,14 @@ function pick(chain: { level: ScopeLevel; ref: string }[], side: Side, use: Use,
   return undefined;
 }
 
-function fromGrant(grant: Grant, side: Side): SideAnswer {
+function fromGrant(grant: Grant, side: Side, ask: Ask): SideAnswer {
   const by = partyName(grant.grantedBy);
   if (grant.unauthorized)
     return { state: "Needs review", grant, level: grant.level, reason: `${by} holds no controlling edge here — stored and flagged.` };
   if (grant.state === "Paused") return { state: "Needs review", grant, level: grant.level, reason: "Paused by an open dispute." };
   if (grant.effect === "Deny") return { state: "Denied", grant, level: grant.level, reason: `${by} denied it at ${grant.level.toLowerCase()} level.` };
-  const partners = grant.partners.mode === "Allowlist" ? ` for ${grant.partners.ids.map(partyName).join(", ")}` : "";
+  const named = ask.audience === "partner" && ask.partner ? [ask.partner] : grant.partners.ids;
+  const partners = grant.partners.mode === "Allowlist" ? ` for ${named.map(partyName).join(", ")}` : "";
   return { state: "Granted", grant, level: grant.level, reason: `${by} granted the ${side.toLowerCase()} side${partners}.` };
 }
 
@@ -215,7 +288,7 @@ function masterAnswer(asset: Asset, use: Use, ask: Required<Pick<Ask, "country" 
   if (use === "Voice/NIL") {
     for (const artist of performersOf(asset)) {
       const grant = pick([{ level: "Artist", ref: artist }], "Master", use, ask);
-      if (grant) return fromGrant(grant, "Master");
+      if (grant) return fromGrant(grant, "Master", ask);
     }
   }
   const grant = pick(masterChain(asset), "Master", use, ask);
@@ -225,7 +298,7 @@ function masterAnswer(asset: Asset, use: Use, ask: Required<Pick<Ask, "country" 
     const holds = on.some((one) => controllers(one.id, "Master", ask.country, ask.at).some((edge) => edge.partyId === grant.grantedBy));
     if (!holds && grant.effect === "Grant")
       return { state: "Needs review", grant, level: grant.level, reason: `${partyName(grant.grantedBy)} holds no controlling edge in ${ask.country} — the grant is stored and flagged.` };
-    return fromGrant(grant, "Master");
+    return fromGrant(grant, "Master", ask);
   }
   if (AI_USES.includes(use)) return { state: "Denied", level: "Default", reason: "Nothing grants it: every AI use defaults to deny." };
   const holds = controllers(asset.id, "Master", ask.country, ask.at).length > 0;
@@ -244,7 +317,7 @@ function compositionAnswers(asset: Asset, use: Use, ask: Required<Pick<Ask, "cou
     return [...new Set(holders.map((one) => one.partyId))].map((party): SideAnswer => {
       // Only the controlling publisher's own grant counts for its share.
       const grant = pick([{ level: "Asset", ref: work.id }, { level: "Catalogue", ref: party }], "Composition", use, ask, party);
-      if (grant) return { ...fromGrant(grant, "Composition"), work, party };
+      if (grant) return { ...fromGrant(grant, "Composition", ask), work, party };
       if (use === "Stream" || use === "Download" || use === "UGC")
         return { state: "Granted", level: "Default", work, party, reason: "Existing territory clearance for distribution." };
       return { state: "Needs review", level: "Default", work, party, reason: `${partyName(party)} has granted nothing for ${useWord(use)}.` };
@@ -260,6 +333,11 @@ export function clearanceOf(assetId: string, use: Use, ask: Ask = {}): Clearance
   if (asset.kind === "Release") {
     // A release holds no rights: it is as cleared as its least cleared track.
     const tracks = recordingsOf(asset).map((one) => clearanceOf(one.id, use, ask));
+    if (!tracks.length) {
+      const reason = "A release with no tracks holds nothing to clear.";
+      const none: SideAnswer = { state: "Needs review", level: "Default", reason };
+      return { state: "Needs review", master: none, composition: [], reason, decidedAt: "Default" };
+    }
     const worst = tracks.find((one) => one.state === "Denied") ?? tracks.find((one) => one.state === "Needs review") ?? tracks[0]!;
     return { ...worst, reason: `${tracks.filter((one) => one.state === "Granted").length} of ${tracks.length} tracks cleared. ${worst.reason}` };
   }
@@ -285,6 +363,12 @@ export function clearanceOf(assetId: string, use: Use, ask: Ask = {}): Clearance
   const touchesComposition = use !== "Voice/NIL" && (asset.kind === "Work" || use === "Sync" || AI_USES.includes(use) || use === "Stream" || use === "Download" || use === "UGC");
   const composition = touchesComposition ? compositionAnswers(asset, use, full) : [];
   const sides = [...(master ? [master] : []), ...composition];
+  // Nothing to ask: a work asked about Voice/NIL. A voice is a performer's; a work holds none.
+  if (!sides.length) {
+    const reason = "Voice/NIL is a performer's right; a work holds none.";
+    const none: SideAnswer = { state: "Denied", level: "Default", reason };
+    return { state: "Denied", master: none, composition: [], reason, decidedAt: "Default" };
+  }
   const state: Answer = sides.some((one) => one.state === "Denied")
     ? "Denied"
     : sides.some((one) => one.state === "Needs review")

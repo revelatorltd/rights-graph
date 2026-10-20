@@ -1,4 +1,4 @@
-import { Avatar, Badge, CollectionPage } from "@revelator/pro-ui";
+import { Avatar, Badge, CollectionPage, formatMeta } from "@revelator/pro-ui";
 import { coverAt, stillAt } from "@revelator/pro-ui/assets";
 
 import { assetById } from "../../../graph/fixtures";
@@ -6,7 +6,7 @@ import type { Asset } from "../../../graph/model";
 import { clearanceOf, controllers, recordingsOf, tierOf, useGraph, worksOf } from "../../../graph/resolve";
 import { ClearanceBadge, TierChip } from "../../../rights/kit";
 import { proHref } from "../index";
-import { catalogueOf, clearanceCounts, countriesOf, openConflictsOn, placesLabel } from "./data";
+import { catalogueOf, clearanceCounts, countriesOf, glancePlace, openConflictsOn, placesLabel } from "./data";
 
 /** Where a catalogue record is: `#/pro/catalog/<tracks|releases|videos>/<id>/<facet>`. */
 export const assetHref = (asset: Asset, facet?: string) =>
@@ -75,7 +75,11 @@ export function Tracks() {
           {
             name: "Cleared uses",
             value: (one) => clearanceCounts(one.id).granted,
-            cell: (one) => `${clearanceCounts(one.id).granted} of 8`,
+            // Asked where the master is controlled; a row asked outside the US says where.
+            cell: (one) => {
+              const counts = clearanceCounts(one.id);
+              return counts.country === "US" ? `${counts.granted} of 8` : formatMeta([`${counts.granted} of 8`, `in ${glancePlace(one, counts.country)}`]);
+            },
           },
           {
             name: "AI training",

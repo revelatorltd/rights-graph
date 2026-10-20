@@ -14,9 +14,10 @@ import {
   addConflict,
   assetById,
   partyName,
+  addRequest,
   wrote,
 } from "../../graph/fixtures";
-import type { Asset, Decision, Grant, Partner, ProofEvent, Request, ScopeLevel, Side, TerritorySet, Use } from "../../graph/model";
+import type { Asset, Decision, Partner, ProofEvent, Request, ScopeLevel, Side, TerritorySet, Use } from "../../graph/model";
 import { clearanceOf, controllers, performersOf, recordingsOf, type Answer, type Clearance } from "../../graph/resolve";
 import { slug } from "../../route";
 
@@ -136,27 +137,13 @@ export interface Snapshot {
   composition: readonly { state: Answer; reason: string; level: string; work?: string; party?: string; grant?: string }[];
 }
 
-/**
- * A reason as a PARTNER may read it. The resolver names every partner on an allowlist, which is
- * the holder's business: told to one partner, it names only that partner (docs/gaps/s6-partner.md).
- */
-export function seenBy(partner: string, reason: string, grant?: Grant) {
-  if (!grant || grant.partners.mode !== "Allowlist" || grant.partners.ids.length < 2) return reason;
-  const named = grant.partners.ids.map(partyName).join(", ");
-  return reason.split(named).join(partyName(partner));
-}
-
-/** The whole answer's reason, as a partner may read it. */
-export const reasonFor = (partner: string, answer: Clearance) =>
-  [answer.master, ...answer.composition].reduce((reason, side) => seenBy(partner, reason, side.grant), answer.reason);
-
-const freeze = (answer: Clearance, partner: string): Snapshot => ({
+const freeze = (answer: Clearance): Snapshot => ({
   state: answer.state,
-  reason: reasonFor(partner, answer),
-  master: { state: answer.master.state, reason: seenBy(partner, answer.master.reason, answer.master.grant), level: answer.master.level, grant: answer.master.grant?.id },
+  reason: answer.reason,
+  master: { state: answer.master.state, reason: answer.master.reason, level: answer.master.level, grant: answer.master.grant?.id },
   composition: answer.composition.map((one) => ({
     state: one.state,
-    reason: seenBy(partner, one.reason, one.grant),
+    reason: one.reason,
     level: one.level,
     work: one.work?.id,
     party: one.party,
@@ -394,7 +381,7 @@ export interface Lookup {
 let LOOKUPS: Lookup[] = [];
 
 function ask(partner: string, assetId: string, use: Use, country: string, asked: Date, via: string, existing?: ProofEvent): Lookup {
-  const answer = freeze(clearanceOf(assetId, use, { partner, country, at: asked }), partner);
+  const answer = freeze(clearanceOf(assetId, use, { partner, country, at: asked, audience: "partner" }));
   const event = existing ?? mint(opaqueOf(assetId), use, asked, `${partner}/${assetId}/${use}/${country}/${asked.getTime()}`);
   return { id: `lk-${event.seq}`, partner, assetId, use, country, asked, receipt: event.receipt!, seq: event.seq, answer, via };
 }
@@ -490,7 +477,7 @@ export const trackReceipt = (askId: string, assetId: string) => TRACK_RECEIPTS.g
 
 function answerTrack(one: Ask, assetId: string, when: Date, shared?: ProofEvent) {
   const event = shared ?? mint(opaqueOf(assetId), one.use, when, `${one.id}/${assetId}/${when.getTime()}/${ISSUED.length}`);
-  const answer = freeze(clearanceOf(assetId, one.use, { partner: one.partner, country: countryOf(one.territory), at: when }), one.partner);
+  const answer = freeze(clearanceOf(assetId, one.use, { partner: one.partner, country: countryOf(one.territory), at: when, audience: "partner" }));
   TRACK_RECEIPTS.set(`${one.id}/${assetId}`, { receipt: event.receipt!, seq: event.seq, asked: when, answer });
 }
 
@@ -512,8 +499,7 @@ export function checkAgain(one: Ask, assetId: string) {
 /**
  * A new ask, routed to every holder of its scope: the master's controller and each controlling
  * publisher, each a request in their own inbox (S4) — logged as auto-cleared where a standing
- * grant already answers it, else waiting on a decision. The graph has no setter that adds a
- * request, so this one writes the shared list in place (docs/gaps/s6-partner.md).
+ * grant already answers it, else waiting on a decision.
  */
 export function requestLicence(input: {
   partner: string;
@@ -527,13 +513,11 @@ export function requestLicence(input: {
 }) {
   const assets = assetsOfScope(input.scope);
   const country = input.territory;
-  const answers = assets.map((asset) => ({ asset, answer: clearanceOf(asset.id, input.use, { partner: input.partner, country }) }));
-  const base = REQUESTS.reduce((most, one) => Math.max(most, Number(one.id.replace("rq-", "")) || 0), 0) + 1;
+  const answers = assets.map((asset) => ({ asset, answer: clearanceOf(asset.id, input.use, { partner: input.partner, country, audience: "partner" }) }));
   const deadline = new Date(TODAY.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const made: Request[] = [];
+  const made: Omit<Request, "id">[] = [];
   const add = (to: string, side: Side, scope: Request["scope"], cleared?: string) => {
     made.push({
-      id: `rq-${base + made.length}`,
       type: "Licence",
       from: input.partner,
       to,
@@ -573,8 +557,8 @@ export function requestLicence(input: {
     add(holder, "Composition", { level: "Catalogue", ref: holder, name: `Works on ${input.scope.name}`, assets: held.works.size }, held.cleared ? held.grant : undefined);
 
   if (!made.length) return undefined;
-  REQUESTS.push(...made);
-  const created = asksOf(input.partner).find((one) => one.requests.some((each) => each.id === made[0]!.id))!;
+  const ids = made.map(addRequest);
+  const created = asksOf(input.partner).find((one) => one.requests.some((each) => each.id === ids[0]))!;
   issueTrackReceipts(created, TODAY);
   wrote();
   return created.id;
