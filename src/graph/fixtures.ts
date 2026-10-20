@@ -670,7 +670,8 @@ export const CLAIMANTS: readonly { party: string; submitted: number; rejected: n
 ];
 
 // ---------------------------------------------------------------------------------------------
-// Writes, kept until the page reloads — every surface reads the graph as it now is.
+// Writes — every surface reads the graph as it now is. Kept for the browser session, so a flow
+// that crosses surfaces (a link into another product reloads the page) carries what it wrote.
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -683,7 +684,70 @@ export const snapshot = () => version;
 /** Records a write and lets every page draw again. */
 export function wrote() {
   version += 1;
+  save();
   for (const listener of listeners) listener();
+}
+
+const KEPT = "rights-graph:graph";
+/** A date written into the session comes back as a date. */
+const revive = (_: string, value: unknown) =>
+  typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value) ? new Date(value) : value;
+
+function save() {
+  try {
+    sessionStorage.setItem(
+      KEPT,
+      JSON.stringify({ ASSETS, ASSERTIONS, GRANTS, CREDITS, ATTESTATIONS, CONFLICTS, REQUESTS, TENANTS, BATCHES }),
+    );
+  } catch {
+    // No session storage (a private window, a blocked site): the writes last until the page reloads.
+  }
+}
+
+type Kept = {
+  ASSETS: Asset[];
+  ASSERTIONS: Assertion[];
+  GRANTS: Grant[];
+  CREDITS: Credit[];
+  ATTESTATIONS: Attestation[];
+  CONFLICTS: Conflict[];
+  REQUESTS: Request[];
+  TENANTS: Tenant[];
+  BATCHES: Batch[];
+};
+
+/** The graph laid over the sets above — the session's, or the fixtures' own. */
+function lay(graph: Kept) {
+  ASSETS.splice(0, ASSETS.length, ...graph.ASSETS);
+  ASSERTIONS = graph.ASSERTIONS;
+  GRANTS = graph.GRANTS;
+  CREDITS = graph.CREDITS;
+  ATTESTATIONS = graph.ATTESTATIONS;
+  CONFLICTS = graph.CONFLICTS;
+  REQUESTS = graph.REQUESTS;
+  TENANTS = graph.TENANTS;
+  BATCHES = graph.BATCHES;
+}
+
+let FIXTURES: Kept | undefined;
+
+function restore() {
+  FIXTURES = structuredClone({ ASSETS, ASSERTIONS, GRANTS, CREDITS, ATTESTATIONS, CONFLICTS, REQUESTS, TENANTS, BATCHES });
+  try {
+    const kept = sessionStorage.getItem(KEPT);
+    if (kept) lay(JSON.parse(kept, revive) as Kept);
+  } catch {
+    // A session written by an older build, or none at all: the graph starts from its fixtures.
+  }
+}
+
+/**
+ * Forgets every write of the session: the graph is its fixtures again, and every page draws from
+ * them. What a surface keeps in its own folder is that surface's, and starts again on a reload.
+ */
+export function resetGraph() {
+  if (FIXTURES) lay(structuredClone(FIXTURES));
+  wrote();
 }
 
 export function setRequestState(id: string, state: Request["state"], decided?: Request["decided"]) {
@@ -774,3 +838,6 @@ export function addBatch(batch: Batch) {
   BATCHES = [batch, ...BATCHES];
   wrote();
 }
+
+// LAST, once every set above is declared: the session's writes over the fixtures.
+restore();

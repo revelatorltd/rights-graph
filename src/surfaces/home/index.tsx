@@ -1,6 +1,7 @@
 import { AppShell, type ShellProduct } from "@revelator/pro-ui";
 import { ORGANIZATIONS } from "@revelator/pro-ui/assets";
 
+import { resetGraph } from "../../graph/fixtures";
 import { homeHref, pageOf } from "./pages";
 
 /**
@@ -28,7 +29,7 @@ const PRODUCT: ShellProduct = {
       ],
     },
   ],
-  user: { name: "Bruno Guez", email: "bruno@revelator.com", commands: [[{ label: "Sign out", opens: () => {} }]] },
+  user: { name: "Bruno Guez", email: "bruno@revelator.com", commands: [[{ label: "Reset the demo", opens: resetGraph }], [{ label: "Sign out", opens: () => {} }]] },
 };
 
 export function Home({ path }: { path: readonly string[] }) {
