@@ -78,6 +78,20 @@ The screens had to take each of these one way; each is flagged where it shows. S
   figures, an index opened **pre-filtered**, a **download** command. `gaps.md` files each as a
   decision with a name, a place, an anatomy and rules.
 
+## Walked, and what to know
+
+Every flow was walked end to end through the UI, persona by persona, and every address the map
+opens renders (41 checked on a fresh session). Two things to know when you demo:
+
+- **F3 starts part-way.** The fixtures hold the Voice/NIL attestation already disputed and its
+  grant already paused (so S1, S3 and S7 show that state on first open); steps 1–3 read as done,
+  steps 4–5 are walkable. Making it walkable from step 1 means seeding rq-2203 back to
+  *Needs decision* and dropping g-14, at-4 and cf-6.
+- **F1 starts at step 2** — Harbour Lights exists in the fixtures; record its DSP delivery from
+  the track's record ("Deliver to DSPs") to see it climb to T2.
+- **On a phone (375 px)**: no page scrolls sideways; the track record's facts line truncates and
+  shows an inner scrollbar, and the readings on Registrations and Look-ups run past the edge.
+
 ## Not built
 
 Push/email notifications and escalation timers (S4-4/5), the artist sign-up and ID check, real file
