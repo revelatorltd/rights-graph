@@ -264,6 +264,13 @@ export function clearanceOf(assetId: string, use: Use, ask: Ask = {}): Clearance
     return { ...worst, reason: `${tracks.filter((one) => one.state === "Granted").length} of ${tracks.length} tracks cleared. ${worst.reason}` };
   }
 
+  // Voice/NIL is the artist's own: an artist-level deny (an opt-out) answers before anything else.
+  if (use === "Voice/NIL") {
+    const artist = masterAnswer(asset, use, full);
+    if (artist.level === "Artist" && artist.state === "Denied")
+      return { state: "Denied", master: artist, composition: [], reason: artist.reason, decidedAt: "Artist" };
+  }
+
   // Dependency: every other AI use needs AI training first.
   if (DEPENDS_ON_TRAINING.includes(use)) {
     const training = clearanceOf(assetId, "AI training", ask);
@@ -274,7 +281,8 @@ export function clearanceOf(assetId: string, use: Use, ask: Ask = {}): Clearance
   }
 
   const master = asset.kind === "Work" ? undefined : masterAnswer(asset, use, full);
-  const touchesComposition = asset.kind === "Work" || use === "Sync" || AI_USES.includes(use) || use === "Stream" || use === "Download" || use === "UGC";
+  // A voice and likeness is a person's, not a song's: Voice/NIL never asks the publishers.
+  const touchesComposition = use !== "Voice/NIL" && (asset.kind === "Work" || use === "Sync" || AI_USES.includes(use) || use === "Stream" || use === "Download" || use === "UGC");
   const composition = touchesComposition ? compositionAnswers(asset, use, full) : [];
   const sides = [...(master ? [master] : []), ...composition];
   const state: Answer = sides.some((one) => one.state === "Denied")
