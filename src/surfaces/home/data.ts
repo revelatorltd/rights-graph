@@ -98,7 +98,7 @@ export const FLOWS: readonly Flow[] = [
     steps: [
       { at: 1, surface: "S1", who: "Kestrel Point Recordings", does: "Creates Harbour Lights; catalogue and splits go to the graph as claims at T1.", opens: as("Label", href("pro", "catalog", "tracks", "r-harbour-lights", "rights")) },
       { at: 2, surface: "S1", who: "Kestrel Point Recordings", does: "Default AI consent applies: training for two named partners, Voice/NIL off.", opens: as("Label", href("pro", "rights", "consent", "defaults")) },
-      { at: 3, surface: "S9", who: "Bluefen Distribution", does: "DSP delivery succeeds; the claim rises to T2.", opens: href("console", "health") },
+      { at: 3, surface: "S9", who: "Bluefen Distribution", does: "DSP delivery succeeds; the claim rises to T2.", opens: as("Label", href("pro", "catalog", "tracks", "r-harbour-lights")) },
       { at: 4, surface: "S2", who: "Harbor Music", does: "Sees the new recording under Recordings to link and confirms the work link.", opens: as("Publisher", href("pro", "rights", "recordings-to-link")) },
       { at: 5, surface: "S3", who: "Mira Castellanos", does: "Gets a credit confirmation in the app and confirms; the asset rises toward T4.", opens: as("Artist", href("artist", "credits")) },
     ],

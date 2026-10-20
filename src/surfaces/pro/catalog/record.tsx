@@ -17,7 +17,7 @@ import {
   type ShellPlace,
 } from "@revelator/pro-ui";
 
-import { ASSETS, ATTESTATIONS, assetById, partyName } from "../../../graph/fixtures";
+import { ASSETS, ATTESTATIONS, assetById, partyName, setDelivered } from "../../../graph/fixtures";
 import type { Asset } from "../../../graph/model";
 import { recordingsOf, tierOf, useGraph, worksOf } from "../../../graph/resolve";
 import { TierChip } from "../../../rights/kit";
@@ -110,6 +110,10 @@ export function AssetRecord({ id, facet }: { id: string; facet: Facet }) {
         actions: asset.kind === "Release" ? [{ label: "Open rights", opens: facetHref(asset, "Rights"), primary: true }] : adds.actions.map((one) => ({ ...one, primary: true })),
         more: [
           ...(asset.kind === "Release" ? [] : adds.more),
+          // F1 step 3: the distributor's DSP delivery is an event into the graph (S9), not a claim.
+          ...(asset.kind === "Recording" && asset.delivered === false && persona === "Label"
+            ? [{ label: "Deliver to DSPs", opens: () => setDelivered(asset.id) }]
+            : []),
           ...(conflicts.length ? [{ label: "Open conflicts", opens: proHref("rights", "conflicts") }] : []),
           { label: "Export rights report" },
         ],

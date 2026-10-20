@@ -783,6 +783,11 @@ export function withdrawAssertion(id: string, by: string, at: Date = new Date())
   ASSERTIONS = ASSERTIONS.map((one) => (one.id === id ? { ...one, state: "Withdrawn" as const, withdrawn: { at, by } } : one));
   wrote();
 }
+/** A file filed in support of a claim — kept on the claim, so whoever resolves it reads it as a basis (F5 step 4). */
+export function addEvidence(assertionId: string, file: string) {
+  ASSERTIONS = ASSERTIONS.map((one) => (one.id === assertionId ? { ...one, evidence: [...(one.evidence ?? []), file] } : one));
+  wrote();
+}
 /** A request into a party's inbox — newest first. Numbered after the highest id held. Returns its id. */
 export function addRequest(request: Omit<Request, "id">) {
   const next = REQUESTS.reduce((most, one) => Math.max(most, Number(one.id.replace("rq-", "")) || 0), 0) + 1;
@@ -828,6 +833,12 @@ export function linkRecording(recordingId: string, workId: string, source: strin
   CONFLICTS = CONFLICTS.map((one) =>
     one.assetId === recordingId && one.kind === "Missing work link" ? { ...one, state: "Resolved", step: 3, resolution: { actor: source, at: TODAY, reason: `Linked to ${assetById(workId).title}.` } } : one,
   );
+  wrote();
+}
+/** A DSP delivery event for a recording (S9): the distributor's receipt, and the claim rises to T2. */
+export function setDelivered(assetId: string) {
+  const index = ASSETS.findIndex((one) => one.id === assetId);
+  ASSETS[index] = { ...ASSETS[index]!, delivered: true };
   wrote();
 }
 export function setBatchState(id: string, change: Partial<Batch>) {

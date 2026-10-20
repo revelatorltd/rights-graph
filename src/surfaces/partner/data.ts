@@ -475,8 +475,14 @@ export interface TrackReceipt {
 const TRACK_RECEIPTS = new Map<string, TrackReceipt>();
 export const trackReceipt = (askId: string, assetId: string) => TRACK_RECEIPTS.get(`${askId}/${assetId}`);
 
+/** How many times each track of an ask was asked again — so a receipt's id never rests on the order pages minted in. */
+const ASKED_AGAIN = new Map<string, number>();
+
 function answerTrack(one: Ask, assetId: string, when: Date, shared?: ProofEvent) {
-  const event = shared ?? mint(opaqueOf(assetId), one.use, when, `${one.id}/${assetId}/${when.getTime()}/${ISSUED.length}`);
+  // The same ask, track and moment mint the same receipt on every load: the one a partner hands
+  // its auditor must still verify when the auditor opens it in a browser of their own (F6).
+  const again = ASKED_AGAIN.get(`${one.id}/${assetId}`) ?? 0;
+  const event = shared ?? mint(opaqueOf(assetId), one.use, when, `${one.id}/${assetId}/${when.getTime()}${again ? `/${again}` : ""}`);
   const answer = freeze(clearanceOf(assetId, one.use, { partner: one.partner, country: countryOf(one.territory), at: when, audience: "partner" }));
   TRACK_RECEIPTS.set(`${one.id}/${assetId}`, { receipt: event.receipt!, seq: event.seq, asked: when, answer });
 }
@@ -492,6 +498,7 @@ function issueTrackReceipts(one: Ask, when: Date) {
 
 /** Asked again: the graph answers now, and the new answer is a new receipt (S6-6). */
 export function checkAgain(one: Ask, assetId: string) {
+  ASKED_AGAIN.set(`${one.id}/${assetId}`, (ASKED_AGAIN.get(`${one.id}/${assetId}`) ?? 0) + 1);
   answerTrack(one, assetId, TODAY);
   wrote();
 }

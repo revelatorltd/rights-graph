@@ -51,11 +51,16 @@ function ConsentBody({ reader }: { reader: Reader }) {
         const grant = one.subject.kind === "Grant" ? grantById(one.subject.id) : undefined;
         const conflict = disputeOf(one);
         return (
-          <Alert key={one.id} intent={one.state === "Disputed" ? "info" : "warn"} title={`${partyName(one.attestor)} approved ${grant?.use ?? one.claim} for ${grant?.partners.ids.map(partyName).join(", ") ?? "a partner"} on ${named(reader).your} behalf`}>
+          <Alert key={one.id} intent={one.state === "Signed" ? "warn" : "info"} title={`${partyName(one.attestor)} approved ${grant?.use ?? one.claim} for ${grant?.partners.ids.map(partyName).join(", ") ?? "a partner"} on ${named(reader).your} behalf`}>
             {`${decidedBy({ actor: partyName(one.attestor), onBehalfOf: reader.subject.name, authority: one.authority, at: one.issued })}. ${
-              one.state === "Disputed"
-                ? `${named(reader).you === "you" ? "You" : named(reader).you} disputed it: ${conflict?.interim ?? "the grant is paused while Sureel reviews it."}`
-                : "If you did not agree to it, dispute it below — the grant pauses while Sureel reviews it."
+              // F3 step 5: once Sureel resolves the dispute, the outcome and its reason replace the ask to dispute.
+              one.state === "Signed"
+                ? "If you did not agree to it, dispute it below — the grant pauses while Sureel reviews it."
+                : conflict?.state === "Resolved"
+                  ? `Sureel resolved ${named(reader).your} dispute: ${conflict.resolution?.reason ?? "see the conflict below."}`
+                  : one.state === "Disputed"
+                    ? `${named(reader).you === "you" ? "You" : named(reader).you} disputed it: ${conflict?.interim ?? "the grant is paused while Sureel reviews it."}`
+                    : `The attestation is ${one.state.toLowerCase()}.`
             }`}
           </Alert>
         );

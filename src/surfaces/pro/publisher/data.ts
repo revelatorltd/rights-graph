@@ -9,6 +9,7 @@ import {
   TODAY,
   addAssertion,
   addConflict,
+  addEvidence,
   assetById,
   partyById,
   partyName,
@@ -582,7 +583,22 @@ let EVIDENCE: Evidence[] = [
   { key: "ev-1", conflictId: "cf-1", by: "p-bensongs", name: "CWR ack ASCAP 2024-03-118", at: new Date(2026, 3, 9, 10, 4) },
   { key: "ev-2", conflictId: "cf-8", by: "p-meridian", name: "MMG_publishing_splits_Q3.csv", at: new Date(2026, 9, 6, 8, 5) },
 ];
-export const evidenceOn = (conflictId: string) => EVIDENCE.filter((one) => one.conflictId === conflictId);
+/**
+ * The files filed on a conflict: the ones filed here, and Harbor's carried on its own claim in the
+ * graph — what a reload keeps, and what Sureel ops reads as a basis to resolve on.
+ */
+export function evidenceOn(conflictId: string): Evidence[] {
+  const here = EVIDENCE.filter((one) => one.conflictId === conflictId);
+  const conflict = CONFLICTS.find((one) => one.id === conflictId);
+  const carried = (conflict?.claims ?? [])
+    .map((id) => ASSERTIONS.find((one) => one.id === id))
+    .filter((one): one is Assertion => one?.partyId === ME)
+    .flatMap((claim) => (claim.evidence ?? []).map((name, index) => ({ key: `${claim.id}-${index}`, conflictId, by: ME, name, at: claim.known })));
+  return [...here, ...carried.filter((one) => !here.some((each) => evidenceName(each) === one.name))];
+}
+
+/** How a filed file reads on the claim it supports: the agreement it is a copy of, then the file. */
+const evidenceName = (item: Pick<Evidence, "name" | "agreement">) => (item.agreement ? `${item.agreement} — ${item.name}` : item.name);
 
 /**
  * Files Harbor's evidence on a conflict, and the tracker moves on: the side asked for evidence has
@@ -591,6 +607,8 @@ export const evidenceOn = (conflictId: string) => EVIDENCE.filter((one) => one.c
  */
 export function fileEvidence(conflict: Conflict, item: Omit<Evidence, "key" | "conflictId" | "by" | "at">) {
   EVIDENCE = [...EVIDENCE, { ...item, key: `ev-${EVIDENCE.length + 1}`, conflictId: conflict.id, by: ME, at: now() }];
+  const mine = conflict.claims.find((id) => ASSERTIONS.find((one) => one.id === id)?.partyId === ME);
+  if (mine) addEvidence(mine, evidenceName(item));
   updateConflict(conflict.id, { step: Math.max(conflict.step, 2), state: "Open" });
 }
 
