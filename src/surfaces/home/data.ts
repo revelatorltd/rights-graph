@@ -33,9 +33,9 @@ export const SURFACES: readonly Surface[] = [
   { id: "S4", name: "Approval inbox", owner: "Revelator", users: "Anyone with something to approve", platform: "Inside S1, S2, S3", purpose: "One queue for every request that needs a person", startsFrom: "New: the cross-app approval layer", origin: "New", phase: "Clear and serve", opens: as("Label", href("pro", "rights", "requests")), approach: "shared" },
   { id: "S5", name: "Contributor portal", owner: "Sureel", users: "Peer majors, aggregators", platform: "Web", purpose: "Upload and monitor bulk data, match results, coverage, sharing, access log", startsFrom: "New", origin: "New", phase: "Land and measure · Resolve and contribute", opens: href("contributor", "overview"), approach: "walled tenant" },
   { id: "S6", name: "Partner portal", owner: "Sureel", users: "AI platforms, DSPs, societies", platform: "Web", purpose: "Keys, clearance look-up, licence requests, usage and provenance, receipts", startsFrom: "Sureel's partner onboarding", origin: "New", phase: "Clear and serve", opens: href("partner", "overview"), approach: "API-first" },
-  { id: "S7", name: "Sureel Graph Console", owner: "Sureel", users: "Sureel rights ops, data engineers", platform: "Web (internal)", purpose: "Ingestion health, conflict queue, match review, asset inspector, coverage, rules", startsFrom: "New", origin: "New", phase: "Land and measure · Resolve and contribute", opens: href("console", "home"), approach: "operator" },
+  { id: "S7", name: "Sureel Graph Console", owner: "Sureel", users: "Sureel rights ops, data engineers", platform: "Web (internal)", purpose: "Ingestion health, conflict queue, match review, asset inspector, coverage, rules", startsFrom: "New", origin: "New", phase: "Land and measure · Resolve and contribute", opens: href("console", "health"), approach: "operator" },
   { id: "S8", name: "Verification portal", owner: "Sureel", users: "Auditors, courts, lenders, regulators, the public", platform: "Web, no account", purpose: "Check a receipt or event ID against the Proof Log", startsFrom: "Replaces registry.original.works", origin: "New", phase: "After day 90", opens: href("verify"), approach: "public proof" },
-  { id: "S9", name: "Graph APIs and feeds", owner: "Sureel", users: "Every system", platform: "API, DDEX, CWR, SFTP", purpose: "Write claims, read clearance and splits, verify, webhooks", startsFrom: "OW Rights Event Ingestion contract", origin: "Extends", phase: "Land and measure", opens: href("console", "ingestion"), approach: "API-first" },
+  { id: "S9", name: "Graph APIs and feeds", owner: "Sureel", users: "Every system", platform: "API, DDEX, CWR, SFTP", purpose: "Write claims, read clearance and splits, verify, webhooks", startsFrom: "OW Rights Event Ingestion contract", origin: "Extends", phase: "Land and measure", opens: href("console", "health"), approach: "API-first" },
 ];
 
 export interface Persona {
@@ -56,14 +56,14 @@ export const PERSONAS: readonly Persona[] = [
   { name: "Artist / performer", place: "Credited on recordings; personal Voice/NIL rights", writes: "Role confirmations, Voice/NIL consent, AI opt-out", reads: "Where they're cleared, who's using them", surface: "S3", does: ["Writes", "Reads"], opens: as("Artist", href("artist", "home")) },
   { name: "Songwriter", place: "Credited on works", writes: "Role confirmations, writer shares (declared)", reads: "Registered works, missing registrations", surface: "S3 (writer mode)", does: ["Writes", "Reads"], opens: as("Writer", href("artist", "home")) },
   { name: "Manager / lawyer", place: "Acts for an artist with delegated authority", writes: "Approvals on the artist's behalf", reads: "Same as artist, scoped", surface: "S3 (delegate)", does: ["Writes"], opens: as("Delegate", href("artist", "home")) },
-  { name: "WMG (Recorded Music, Chappell)", place: "Largest contributor; owned data lane", writes: "Bulk catalogue, agreements, the WMG↔Chappell join", reads: "Everything it owns, coverage", surface: "RAD + S9 feeds", does: ["Writes", "Reads"], opens: href("console", "ingestion") },
+  { name: "WMG (Recorded Music, Chappell)", place: "Largest contributor; owned data lane", writes: "Bulk catalogue, agreements, the WMG↔Chappell join", reads: "Everything it owns, coverage", surface: "RAD + S9 feeds", does: ["Writes", "Reads"], opens: href("console", "health") },
   { name: "Peer major / aggregator", place: "Borrowed-data lane; co-owner of the alternative", writes: "Bulk data into their own tenant", reads: "Their match results and coverage only", surface: "S5", does: ["Writes", "Reads"], opens: href("contributor", "overview") },
-  { name: "Free-source body", place: "Public or licensed reference data", writes: "Nothing directly; ingested by Sureel", reads: "Nothing", surface: "Ingestion (no UI)", does: ["Writes"], opens: href("console", "ingestion") },
-  { name: "Collecting society", place: "Registration and collection authority", writes: "Registrations, acknowledgements", reads: "Verify records, query claims", surface: "S6 + CWR / API", does: ["Writes", "Reads"], opens: as("GEMA", href("partner", "society")) },
+  { name: "Free-source body", place: "Public or licensed reference data", writes: "Nothing directly; ingested by Sureel", reads: "Nothing", surface: "Ingestion (no UI)", does: ["Writes"], opens: href("console", "health") },
+  { name: "Collecting society", place: "Registration and collection authority", writes: "Registrations, acknowledgements", reads: "Verify records, query claims", surface: "S6 + CWR / API", does: ["Writes", "Reads"], opens: as("GEMA", href("partner", "registrations")) },
   { name: "AI platform", place: "Licensee; provenance reporter", writes: "Usage, provenance records, licence requests", reads: "Effective clearance, receipts", surface: "S6 + Clearance API", does: ["Writes", "Reads"], opens: as("Cadence AI", href("partner", "overview")) },
   { name: "DSP / UGC platform", place: "Licensee; platform ownership claims", writes: "Claims (Content ID, Rights Manager) as evidence", reads: "Splits, ownership for claiming", surface: "S6 / Partner API", does: ["Writes", "Reads"], opens: as("Openwave Studios", href("partner", "overview")) },
   { name: "Verifier", place: "Checks a record without trusting any party", writes: "Nothing", reads: "Proof events, receipts", surface: "S8", does: ["Reads"], opens: href("verify") },
-  { name: "Sureel operations", place: "Runs the graph", writes: "Resolutions, merges, rule versions", reads: "Everything", surface: "S7", does: ["Writes", "Reads", "Resolves"], opens: href("console", "home") },
+  { name: "Sureel operations", place: "Runs the graph", writes: "Resolutions, merges, rule versions", reads: "Everything", surface: "S7", does: ["Writes", "Reads", "Resolves"], opens: href("console", "health") },
 ];
 
 export interface FlowStep {
@@ -97,8 +97,8 @@ export const FLOWS: readonly Flow[] = [
     question: "Does a new release start from the label's defaults, and climb the ladder as others confirm it?",
     steps: [
       { at: 1, surface: "S1", who: "Kestrel Point Recordings", does: "Creates Harbour Lights; catalogue and splits go to the graph as claims at T1.", opens: as("Label", href("pro", "catalog", "tracks", "r-harbour-lights", "rights")) },
-      { at: 2, surface: "S1", who: "Kestrel Point Recordings", does: "Default AI consent applies: training for two named partners, Voice/NIL off.", opens: as("Label", href("pro", "rights", "defaults")) },
-      { at: 3, surface: "S9", who: "Bluefen Distribution", does: "DSP delivery succeeds; the claim rises to T2.", opens: href("console", "ingestion") },
+      { at: 2, surface: "S1", who: "Kestrel Point Recordings", does: "Default AI consent applies: training for two named partners, Voice/NIL off.", opens: as("Label", href("pro", "rights", "consent", "defaults")) },
+      { at: 3, surface: "S9", who: "Bluefen Distribution", does: "DSP delivery succeeds; the claim rises to T2.", opens: href("console", "health") },
       { at: 4, surface: "S2", who: "Harbor Music", does: "Sees the new recording under Recordings to link and confirms the work link.", opens: as("Publisher", href("pro", "rights", "recordings-to-link")) },
       { at: 5, surface: "S3", who: "Mira Castellanos", does: "Gets a credit confirmation in the app and confirms; the asset rises toward T4.", opens: as("Artist", href("artist", "credits")) },
     ],
@@ -127,7 +127,7 @@ export const FLOWS: readonly Flow[] = [
     question: "When the label speaks for the artist, does the artist see it, and can they dispute it without silently revoking it?",
     open: "Whether a dispute pauses the grant or leaves it live until resolved is a policy call for WMG legal. Built here: paused.",
     steps: [
-      { at: 1, surface: "S1", who: "Kestrel Point Recordings", does: "Voxa Voice's Voice/NIL request arrives; the label attests on Mira's behalf, citing AGR-310 §7.4.", opens: as("Label", href("pro", "rights", "ai-consent")) },
+      { at: 1, surface: "S1", who: "Kestrel Point Recordings", does: "Voxa Voice's Voice/NIL request arrives; the label attests on Mira's behalf, citing AGR-310 §7.4.", opens: as("Label", href("pro", "rights", "consent")) },
       { at: 2, surface: "S3", who: "Mira Castellanos", does: "Is notified: Kestrel Point approved Voice/NIL for Voxa Voice on your behalf.", opens: as("Artist", href("artist", "consent")) },
       { at: 3, surface: "S3", who: "Mira Castellanos", does: "Disagrees and taps Dispute.", opens: as("Artist", href("artist", "consent")) },
       { at: 4, surface: "S7", who: "Sureel ops", does: "A conflict opens; the grant is paused, not revoked. Ops sees both claims and the cited clause.", opens: href("console", "conflicts", "cf-6") },
@@ -142,8 +142,8 @@ export const FLOWS: readonly Flow[] = [
     ends: "S5",
     question: "Can a competitor contribute and see exactly what it gave, what it got back, and who read it?",
     steps: [
-      { at: 1, surface: "S5", who: "Meridian Music Group", does: "Uploads a DDEX and CSV extract into its own tenant.", opens: href("contributor", "uploads") },
-      { at: 2, surface: "S5", who: "Meridian Music Group", does: "Validation catches row errors before ingest; Meridian fixes and resubmits.", opens: href("contributor", "uploads", "b-3108") },
+      { at: 1, surface: "S5", who: "Meridian Music Group", does: "Uploads a DDEX and CSV extract into its own tenant.", opens: href("contributor", "upload") },
+      { at: 2, surface: "S5", who: "Meridian Music Group", does: "Validation catches row errors before ingest; Meridian fixes and resubmits.", opens: href("contributor", "batches", "b-3108") },
       { at: 3, surface: "Graph", who: "Matching", does: "Matching runs; Meridian sees matched, new, conflicting and unmatched counts.", opens: href("contributor", "matches") },
       { at: 4, surface: "S7", who: "Sureel ops", does: "Conflicts that touch WMG claims go to the queue; WMG never sees Meridian's private terms.", opens: href("console", "conflicts", "cf-8") },
       { at: 5, surface: "S5", who: "Meridian Music Group", does: "Sees coverage go up, and the access log of who read its data.", opens: href("contributor", "access") },
@@ -157,7 +157,7 @@ export const FLOWS: readonly Flow[] = [
     ends: "S7",
     question: "When an acknowledgement disagrees with the graph, is the claim kept, the conflict routed, and payment held to the stronger claim?",
     steps: [
-      { at: 1, surface: "S9", who: "GEMA", does: "A CWR acknowledgement claims 60% for Harbor in DE, where the graph holds 50%.", opens: as("GEMA", href("partner", "society")) },
+      { at: 1, surface: "S9", who: "GEMA", does: "A CWR acknowledgement claims 60% for Harbor in DE, where the graph holds 50%.", opens: as("GEMA", href("partner", "registrations")) },
       { at: 2, surface: "Graph", who: "Resolver", does: "An overclaim opens at 110%, HIGH because the work earns." },
       { at: 3, surface: "S2, S7", who: "Harbor Music, Sureel ops", does: "Both publishers see it in Conflicts; ops sees it in the queue with revenue at risk.", opens: as("Publisher", href("pro", "rights", "conflicts", "cf-1")) },
       { at: 4, surface: "S2", who: "Harbor Music", does: "Uploads its agreement as evidence; the counterclaim moves to its next step.", opens: as("Publisher", href("pro", "rights", "conflicts", "cf-1")) },
@@ -172,7 +172,7 @@ export const FLOWS: readonly Flow[] = [
     ends: "S8",
     question: "Can someone with no account prove a clearance existed then, unaltered, without seeing any amount?",
     steps: [
-      { at: 1, surface: "S6", who: "Cadence AI", does: "Hands its auditor a receipt for a training run.", opens: as("Cadence AI", href("partner", "lookup")) },
+      { at: 1, surface: "S6", who: "Cadence AI", does: "Hands its auditor a receipt for a training run.", opens: as("Cadence AI", href("partner", "lookups")) },
       { at: 2, surface: "S8", who: "Auditor", does: "Pastes the receipt ID; sees Verified, the time and the signing key.", opens: href("verify", "rcpt_7Q2M-9F4K-CD7A") },
       { at: 3, surface: "S8", who: "Auditor", does: "Downloads the bundle and checks it offline. No account, no amounts.", opens: href("verify", "rcpt_7Q2M-9F4K-CD7A") },
     ],
@@ -284,7 +284,7 @@ export const APPROACHES: readonly Approach[] = [
     ],
     taken: "Ask and keep a receipt; requests over a scope route to every side's holder.",
     because: "Partners see cleared uses only; a browser would show terms they have no right to, and a receipt is what their auditor needs.",
-    see: as("Cadence AI", href("partner", "lookup")),
+    see: as("Cadence AI", href("partner", "lookups")),
   },
   {
     id: "A8",
@@ -297,7 +297,7 @@ export const APPROACHES: readonly Approach[] = [
     ],
     taken: "Health first on Home with what is late or failing flagged, the queue one step away, ranked by severity then revenue.",
     because: "FRD S7-1: a late feed is flagged on the home view; a queue read off a stale lane is the wrong queue.",
-    see: href("console", "home"),
+    see: href("console", "health"),
   },
   {
     id: "A9",
