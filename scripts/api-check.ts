@@ -112,6 +112,8 @@ const read = (response: { body: unknown }) => response.body as any;
   check("… the label attesting about a work it neither holds nor is credited on is not signed", stranger.items[0].state !== "Signed", JSON.stringify(stranger.items[0]));
   const holder = read(post("/api/v1/attestations", { subject: { kind: "Asset", id: "r-paper-moons" }, claim: "AI disclosure", assurance: "Verified", key_id: "kestrel-label-2026" }, "hk_live_kestrel", "at-5"));
   check("… the label that holds the master signs its own", holder.items[0].state === "Signed", JSON.stringify(holder.items[0]));
+  const foreign = read(post("/api/v1/links", { recording: "r-ember", work: "w-paper-moons" }, "hk_live_meridian", "l-2"));
+  check("a key cannot link a recording and a work its holder holds neither of", foreign.items[0].status === "rejected", JSON.stringify(foreign.items[0]));
   check("another key cannot read a write's confirmation", get(`/api/v1/commands/${body.event}`, "hk_live_harbor").status === 404);
   check("… the key that wrote it can", get(`/api/v1/commands/${body.event}`, "hk_live_kestrel").status === 200);
 }

@@ -1111,9 +1111,26 @@ function linkRecordingWork(item: Record<string, unknown>, index: number, effects
   if (recording.kind !== "Recording") problems.push({ field: "recording", problem: `${recording.title} is a ${recording.kind.toLowerCase()}` });
   if (work.kind !== "Work") problems.push({ field: "work", problem: `${work.title} is a ${work.kind.toLowerCase()}` });
   if (problems.length) return { index, status: "rejected", problems };
+  // A link routes publishing money, so only a party holding one side of it makes one: the
+  // recording's label, or a standing OWNS / CONTROLS edge on the recording or the work.
+  const holder = effects.key.holder;
+  const holds = (asset: Asset) =>
+    ASSERTIONS.some(
+      (one) =>
+        one.assetId === asset.id &&
+        one.partyId === holder &&
+        (one.interests.includes("Owns") || one.interests.includes("Controls")) &&
+        one.state !== "Superseded" &&
+        one.state !== "Withdrawn" &&
+        one.state !== "No authority",
+    );
+  if (recording.labelId !== holder && !holds(recording) && !holds(work))
+    return { index, status: "rejected", problems: [{ field: "recording", problem: `${effects.key.id} links only recordings or works ${partyName(holder)} holds` }] };
   if (recording.embodies?.some((one) => one.workId === work.id)) return { index, status: "applied", id: `${recording.id}→${work.id}`, state: "Linked", note: "Already linked: nothing changed." };
   const opened = CONFLICTS.filter((one) => one.assetId === recording.id && one.kind === "Missing work link" && one.state !== "Resolved");
-  linkRecording(recording.id, work.id, text(item, "source") ?? `API · ${partyName(effects.key.holder)}`);
+  // Who linked it is the key's holder, whatever the caller names as its source.
+  const said = text(item, "source");
+  linkRecording(recording.id, work.id, `API · ${partyName(holder)}${said ? ` (${said})` : ""}`);
   for (const one of opened)
     effects.webhooks.push(payload("conflict.resolved", `whk_${hash(one.id, 10)}`, effects.at, { conflict: one.id, kind: one.kind, resolution: `Linked to ${work.title}.` }));
   return {
