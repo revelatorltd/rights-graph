@@ -19,6 +19,7 @@ import { noticeCommand, noticePage, noticeSection } from "../notify/pages";
 import { artistSeat } from "../notify/seats";
 import { societiesPage, worksPage } from "./works";
 import { Arriving } from "../arriving";
+import { MAP, elsewhereFrom } from "../family";
 
 /**
  * The Artist app (S3) — where personal rights live: identity, credits, voice. Not a catalogue
@@ -82,6 +83,8 @@ function productFor(persona: AppPersona, reader: Reader): ShellProduct {
   ];
   return {
     workspace: { name: "Revelator", mark: ORGANIZATIONS.revelator.art },
+    utilities: [MAP],
+    elsewhere: elsewhereFrom("artist"),
     personas: APP_PERSONAS,
     destinations,
     // Notifications (S4-4): push and email to the phone, kept here; reached from the account menu.

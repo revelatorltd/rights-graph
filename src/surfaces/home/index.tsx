@@ -7,6 +7,7 @@ import { advanceClock } from "../../graph/notify";
 import { href } from "../../route";
 import { Arriving } from "../arriving";
 import { homeHref, pageOf } from "./pages";
+import { elsewhereFrom } from "../family";
 
 /**
  * The map of the prototypes — what a reviewer opens first. Nine surfaces around one graph, the
@@ -15,6 +16,7 @@ import { homeHref, pageOf } from "./pages";
  */
 const productOf = (network: Network): ShellProduct => ({
   workspace: { name: "Rights Graph", mark: ORGANIZATIONS.revelator.art },
+  elsewhere: elsewhereFrom("home"),
   destinations: [
     {
       name: "Map",

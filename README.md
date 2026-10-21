@@ -12,7 +12,10 @@ npm run dev          # http://localhost:5190 — start at the map
 
 ## Start here
 
-**`http://localhost:5190/#/home`** — the map. From it:
+**`http://localhost:5190/#/home`** — the map. You never have to come back to it: on every
+surface, the **people button beside the account** (View As) lists that surface's personas and,
+under them, every other surface and persona — one press opens it in that context — and the
+**grid at the foot of the rail** returns to the map. From the map:
 
 - **Surfaces** — S1–S9, each opening on its first page.
 - **Personas** — all fourteen parties in the FRD; each opens the surface it works in, already in its

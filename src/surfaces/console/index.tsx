@@ -19,6 +19,7 @@ import { consoleSeat } from "../notify/seats";
 import { IdentityClaimsPage } from "../artist/claim-review";
 import { OPS_ONLY, PERSONAS, SIGNED_IN, consoleHref, type ConsolePage, type Persona } from "./where";
 import { Arriving } from "../arriving";
+import { MAP, elsewhereFrom } from "../family";
 
 /**
  * The Sureel Graph Console (S7) — where the graph is run. Imitates RCC, Revelator's own ops console:
@@ -31,6 +32,8 @@ function productFor(persona: Persona): ShellProduct {
   const user = SIGNED_IN[persona];
   return {
     workspace: { name: "Sureel Graph Console", mark: ORGANIZATIONS.fieldhouse.art },
+    utilities: [MAP],
+    elsewhere: elsewhereFrom("console"),
     personas: PERSONAS,
     destinations: [
       {

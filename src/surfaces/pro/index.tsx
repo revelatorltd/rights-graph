@@ -9,6 +9,7 @@ import { CATALOG_PAGES } from "./catalog";
 import { LABEL_PAGES, LABEL_RIGHTS_NAV } from "./label";
 import { PUBLISHER_PAGES, PUBLISHER_RIGHTS_NAV } from "./publisher";
 import { Arriving } from "../arriving";
+import { MAP, elsewhereFrom } from "../family";
 
 /**
  * Revelator Pro, with the Rights workspace (S1) and its publishing mode (S2). ONE shell switched by
@@ -34,6 +35,8 @@ function productFor(persona: Persona): ShellProduct {
   const working = WORKING_AS[persona];
   return {
     workspace: { name: working.workspace, mark: working.mark },
+    utilities: [MAP],
+    elsewhere: elsewhereFrom("pro"),
     personas: PERSONAS,
     destinations: [
       {

@@ -12,6 +12,12 @@ rights · S2 publisher · S3 artist · S5 contributor · S6 partner · S7 consol
 until decided** is what the screens do today. **Proposed** is a decision for the system, written as
 the gate in the system's CLAUDE.md asks: a name, a place, an anatomy, the rules.
 
+Decided in the system since: **`ShellProduct.elsewhere`** — the other products a prototype family
+is seen beside, listed under the product's own personas in the shell's View As control, each view
+an address it leaves for (`src/components/layouts/shell.tsx`). Every surface here passes the other
+eight, and the map as a rail utility. Also the `batch` family's Validating and Ingesting, which
+were drawn alike, now carry marks of their own.
+
 Already decided in the system tonight: **eleven rights status families** in `src/lib/statuses.ts`
 — `clearance`, `claim`, `conflict`, `request`, `attestation`, `credit`, `grant`, `batch`, `match`,
 `registration`, `feed`. Tests and typecheck pass; not committed (the system's `src/` has no commit
