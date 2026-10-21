@@ -8,6 +8,7 @@ import {
   CREDITS,
   FEEDS,
   MERGES,
+  NOTICES as TOLD,
   RULES,
   TENANTS,
   TODAY,
@@ -24,6 +25,7 @@ import {
 import type { Assertion, Conflict, Feed, Lane, Severity, Tenant } from "../../graph/model";
 import { PRECEDENCE } from "../../graph/model";
 import { RULE_VERSION, worksOf } from "../../graph/resolve";
+import { personName } from "../../graph/notify";
 
 /**
  * What the console keeps that the shared graph does not — notes on a conflict, merge decisions, a
@@ -127,7 +129,11 @@ export function askForEvidence(conflict: Conflict, by: string) {
   updateConflict(conflict.id, { state: "Awaiting evidence", step: Math.max(conflict.step, 1) });
 }
 
-/** Who has been told of an outcome, and what — until the graph carries notices of its own. */
+/**
+ * Who has been told of an outcome, and what: the graph's own notices (`graph/notify.ts` — a
+ * resolution, a policy change), and the console's for what the graph has no write for (an unmerge,
+ * an audit window).
+ */
 export interface Notice {
   at: Date;
   to: string;
@@ -135,7 +141,10 @@ export interface Notice {
   says: string;
 }
 let NOTICES: Notice[] = [];
-export const noticesAbout = (about: string) => NOTICES.filter((one) => one.about === about);
+export const noticesAbout = (about: string): Notice[] => [
+  ...TOLD.filter((one) => one.about.id === about).map((one) => ({ at: one.at, to: personName(one.to), about, says: one.title })),
+  ...NOTICES.filter((one) => one.about === about),
+].sort((a, b) => b.at.getTime() - a.at.getTime());
 const notify = (to: string, about: string, says: string) => {
   NOTICES = [{ at: stamp(), to, about, says }, ...NOTICES];
 };
@@ -153,7 +162,7 @@ export function resolve(conflict: Conflict, by: string, outcome: string, basis: 
     setAttestationState(dispute.attestation, upheld ? "Signed" : "Revoked");
   }
   record(conflict.id, { at: stamp(), who: by, action: "resolved", property: "State", before: conflict.state, after: "Resolved" });
-  for (const party of conflict.parties) notify(partyName(party), conflict.id, `${outcome}. ${reason}`);
+  // Every party is told by the graph as it hears the conflict resolve (F3 step 5).
   updateConflict(conflict.id, {
     state: "Resolved",
     step: 3,
@@ -274,7 +283,7 @@ export interface Merged {
 
 let MERGED: Merged[] = [
   { id: "mg-0412", kind: "Party", kept: "Mira Castellanos", folded: "M. Castellanos", ids: ["ISNI 0000000502916647", "MMG-ART-22871"], assets: ["r-northbound", "r-tidewater", "r-paper-moons", "r-ferry"], at: at(10, 8, 15, 30), by: "Noor Haddad" },
-  { id: "mg-0398", kind: "Work", kept: "Paper Moons", folded: "Paper Moon", ids: ["ISWC T-912.448.377-2", "MLC P83301K"], assets: ["w-paper-moons", "r-paper-moons"], at: at(9, 21, 11, 2), by: "Lior Ben-Ami" },
+  { id: "mg-0398", kind: "Work", kept: "Paper Moons", folded: "Paper Moon", ids: ["ISWC T-912.448.377-8", "MLC P83301K"], assets: ["w-paper-moons", "r-paper-moons"], at: at(9, 21, 11, 2), by: "Lior Ben-Ami" },
   { id: "mg-0377", kind: "Party", kept: "Silverbirch Publishing House", folded: "Silverbirch Publishing", ids: ["IPI 00377190442", "IPI 00377190443"], assets: ["w-paper-moons", "w-lowlight", "w-glass-coast", "w-switchback", "w-ferry"], at: at(9, 2, 9, 45), by: "Noor Haddad" },
 ];
 
@@ -404,11 +413,10 @@ export const policyLogOf = (tenant: string) => POLICY_LOG.filter((one) => one.te
 export function changeSharing(tenantId: string, field: string, after: SharingLevel, by: string, reason: string) {
   const tenant = tenantById(tenantId);
   const before = tenant.sharing.find((one) => one.field === field)!.level;
-  setSharing(tenantId, field, after);
+  setSharing(tenantId, field, after, by);
   const admin = `${tenant.name} admin`;
   POLICY_LOG = [{ at: stamp(), tenant: tenantId, field, before, after, by, reason, notified: admin }, ...POLICY_LOG];
   addAccess(tenantId, { at: stamp(), who: `${by}, Sureel ops`, via: "Graph Console · sharing policy", what: `${field}: ${before} → ${after}. You were notified.` });
-  notify(admin, tenantId, `${field} is now ${after.toLowerCase()}.`);
   wrote();
 }
 

@@ -3,6 +3,9 @@ import { ORGANIZATIONS } from "@revelator/pro-ui/assets";
 
 import { href } from "../../route";
 import { useShellPersona } from "../surface";
+import { API_PAGES } from "./api";
+import { noticeCommand, noticePage, noticeSection } from "../notify/pages";
+import { partnerSeat } from "../notify/seats";
 import { PERSONAS, WORKING_AS, partnerOf, type Persona } from "./data";
 import { KEYS_PAGES } from "./keys";
 import { LOOKUP_PAGES } from "./lookups";
@@ -33,6 +36,8 @@ const PAGES: Record<string, PartnerPage> = {
   ...KEYS_PAGES,
   ...WEBHOOK_PAGES,
   ...SOCIETY_PAGES,
+  ...API_PAGES,
+  notifications: (rest, working) => noticePage(partnerSeat(working.persona), rest),
 };
 
 /** The pages only a licensee has, and the ones only a society has. */
@@ -49,6 +54,7 @@ const developers = (society: boolean) => ({
         { name: "API keys", opens: partnerHref("keys") },
         ...(society ? [] : [{ name: "Sandbox", opens: partnerHref("sandbox") }]),
         { name: "Webhooks", opens: partnerHref("webhooks") },
+        { name: "API explorer", opens: partnerHref("api") },
       ],
     },
   ],
@@ -95,10 +101,12 @@ function productFor(working: Working): ShellProduct {
           ]),
       developers(society),
     ],
-    offRail: [{ name: "Organisation", opens: partnerHref("organisation") }],
+    // Notifications (S4-3 "the requester is notified"): answers, licences paused or revoked.
+    offRail: [{ name: "Organisation", opens: partnerHref("organisation") }, noticeSection(partnerSeat(working.persona))],
     user: {
       ...working.user,
       commands: [
+        [noticeCommand(partnerSeat(working.persona))],
         [{ label: "Open the Verification portal", opens: href("verify") }],
         // Signing out leaves the product, which this prototype does not model.
         [{ label: "Sign out", opens: () => {} }],

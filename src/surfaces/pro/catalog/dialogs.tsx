@@ -11,6 +11,7 @@ import {
   unanswered,
   type HeldBy,
 } from "@revelator/pro-ui";
+import { keepEvidence } from "../../../rights/files";
 
 import { TODAY, linkRecording, works } from "../../../graph/fixtures";
 import type { Assertion, Asset, Side, SourceKind, TerritorySet } from "../../../graph/model";
@@ -154,7 +155,11 @@ export function ClaimDialog({
         <UploaderDocument
           noun={{ one: "document", many: "documents" }}
           formats="PDF, PNG or JPG"
-          onSelect={(picked) => setFiles((now) => [...now, ...[...picked].map((one) => ({ name: one.name, size: one.size }))])}
+          onSelect={(picked) => {
+            // Kept as evidence: the file's name goes on the claim, its size and type beside it.
+            keepEvidence([...picked]);
+            setFiles((now) => [...now, ...[...picked].map((one) => ({ name: one.name, size: one.size }))]);
+          }}
         >
           {files.map((one) => (
             <UploaderFileRow

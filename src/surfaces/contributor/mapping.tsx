@@ -4,6 +4,8 @@ import { TARGET_FIELDS } from "../../graph/fixtures";
 import {
   confirmMappings,
   mapHeader,
+  mappedByName,
+  mappingSource,
   mappings,
   saveMapping,
   savedMappings,
@@ -66,8 +68,8 @@ export function FieldMapping() {
         noun: { one: "header", many: "headers" },
         identity: { title: "Header", name: (one) => one.header },
         note: (
-          <Alert intent="info" title="MMG_publishing_splits_Q3.csv">
-            {`${applied ? `Mapped automatically with “${applied.name}”, saved ${formatDate(applied.saved, "day")}. ` : ""}A header left unmapped is never ingested — it stays in your tenant. Saved mappings: ${formatList(saved.map((one) => one.name)) ?? "none yet"}.`}
+          <Alert intent="info" title={mappingSource()}>
+            {`${mappedByName() ? "Read here: each header matched to the graph's fields by its name — confirm the suggestions, or map them by hand. " : applied ? `Mapped automatically with “${applied.name}”, saved ${formatDate(applied.saved, "day")}. ` : ""}A header left unmapped is never ingested — it stays in your tenant. Saved mappings: ${formatList(saved.map((one) => one.name)) ?? "none yet"}.`}
           </Alert>
         ),
         columns: [

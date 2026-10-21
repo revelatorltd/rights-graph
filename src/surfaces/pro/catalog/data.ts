@@ -324,7 +324,7 @@ export function writeClaim(draft: ClaimDraft, actor: string): { id: string; conf
         state: "Resolved",
         step: 3,
         resolution: { actor, at: now(), reason: `Corrected by ${partyName(draft.partyId)} to ${formatPercent(draft.share, { whole: true })}; the shares are whole again.` },
-      });
+      }, draft.partyId);
       replaced = open.id;
     }
   }
@@ -379,7 +379,7 @@ export function withdrawClaim(claim: Assertion, actor: string) {
         state: "Resolved",
         step: 3,
         resolution: { actor, at: now(), reason: `${partyName(claim.partyId)} withdrew its claim.` },
-      });
+      }, claim.partyId);
   }
 }
 

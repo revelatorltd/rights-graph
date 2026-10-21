@@ -2,6 +2,8 @@ import { AppShell, type ShellProduct } from "@revelator/pro-ui";
 import { ORGANIZATIONS } from "@revelator/pro-ui/assets";
 
 import { resetGraph } from "../../graph/fixtures";
+import { advanceClock } from "../../graph/notify";
+import { href } from "../../route";
 import { homeHref, pageOf } from "./pages";
 
 /**
@@ -29,7 +31,19 @@ const PRODUCT: ShellProduct = {
       ],
     },
   ],
-  user: { name: "Bruno Guez", email: "bruno@revelator.com", commands: [[{ label: "Reset the demo", opens: resetGraph }], [{ label: "Sign out", opens: () => {} }]] },
+  user: {
+    name: "Bruno Guez",
+    email: "bruno@revelator.com",
+    commands: [
+      [{ label: "Reset the demo", opens: resetGraph }],
+      // The demo clock (S4-5): a week on, what is left unanswered goes up a role.
+      [
+        { label: "Advance the clock a week", opens: () => advanceClock(7) },
+        { label: "Open the escalation clock", opens: href("console", "notifications", "escalation") },
+      ],
+      [{ label: "Sign out", opens: () => {} }],
+    ],
+  },
 };
 
 export function Home({ path }: { path: readonly string[] }) {

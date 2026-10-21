@@ -2,7 +2,7 @@ import { Alert, Avatar, Badge, CollectionPage, formatCount, formatMeta } from "@
 
 import { contributorHref } from "./address";
 import { batchHref } from "./batches";
-import { matchRecords, MATCH_STATES, matchTotals, type MatchRecord } from "./data";
+import { exportMatches, matchRecords, MATCH_STATES, matchTotals, TENANT_ID, type MatchRecord } from "./data";
 
 /**
  * What matching made of everything the tenant sent (S5-3): the four counts over every matched
@@ -14,7 +14,7 @@ export function MatchResults() {
   return (
     <CollectionPage
       title="Match results"
-      more={[{ label: "Export" }]}
+      more={[{ label: "Export", mark: "download", opens: () => exportMatches(`${TENANT_ID}_match_results.csv`, matchRecords()) }]}
       index={{
         rows: matchRecords(),
         rowKey: (one) => one.id,

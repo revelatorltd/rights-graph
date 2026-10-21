@@ -1,6 +1,7 @@
 import {
   addAccess,
   addBatch,
+  ASSETS,
   BATCHES,
   CONFLICTS,
   MAPPING,
@@ -12,8 +13,9 @@ import {
   TODAY,
   wrote,
 } from "../../graph/fixtures";
-import { follow, formatCount } from "@revelator/pro-ui";
+import { formatCount } from "@revelator/pro-ui";
 import type { Batch, Tenant, TerritorySet, Tier } from "../../graph/model";
+import { checkRows, downloadCsv, fieldIn, iswcWritten, passing, suggestMapping, type FileRow, type ReadResult, type RowError } from "../../rights/files";
 
 /**
  * What the contributor portal knows that the shared graph does not hold — read by id against the
@@ -115,17 +117,54 @@ export const CHANNEL_ENDPOINT: Record<Channel, string> = {
 };
 
 /** The row errors a batch holds: the graph's sample for the Q3 splits file, and what a check finds. */
-const ERRORS: Record<string, { row: number; field: string; value: string; problem: string }[]> = {
+const ERRORS: Record<string, RowError[]> = {
   "b-3108": [...ROW_ERRORS],
 };
 export const rowErrorsOf = (batchId: string) => ERRORS[batchId] ?? [];
 
+/**
+ * The file a batch was read from, where it was read here — its rows, and the mapping its headers
+ * were read through. A batch fed by SFTP or the API, or the canned sample, has none: its counts
+ * are the feed's.
+ */
+const READS: Record<string, { read: ReadResult; mapping?: Record<string, string | undefined> }> = {};
+export const readOf = (batchId: string) => READS[batchId]?.read;
+
+/** The mapping a file's headers are read through now: every header with a field, suggested or settled. */
+const currentMapping = () => Object.fromEntries(MAPPINGS.map((one) => [one.header, one.target]));
+
+/** A file's rows, checked: through the mapping where its headers are its own, directly where they are the graph's. */
+function check(read: ReadResult) {
+  const mapping = read.mapped ? undefined : currentMapping();
+  const errors = checkRows(read, mapping);
+  return { mapping, errors, failing: new Set(errors.map((one) => one.row)).size };
+}
+
+/** A file read here, ahead of the batch: a CSV's or JSON's headers become the mapping to settle. */
+export function readIn(read: ReadResult) {
+  if (read.mapped) return;
+  MAPPINGS = suggestMapping(read.headers, read.rows[0]).map((one) => ({ ...one }));
+  MAPPING_SOURCE = read.facts.name;
+  MAPPED_BY_NAME = true;
+  wrote();
+}
+
 let next = 3200;
-/** A file received into the tenant: checked against the schema before anything is accepted. */
-export function receive(file: string, format: Format, channel: Channel, rows: number): string {
+/**
+ * A file received into the tenant: checked against the schema before anything is accepted. Read
+ * here, its own rows are checked against the graph's rules; fed, or the canned sample, the feed's
+ * counts stand in.
+ */
+export function receive(file: string, format: Format, channel: Channel, rows: number, read?: ReadResult): string {
   const id = `b-${next++}`;
-  const failing = format === "CSV" ? Math.round(rows * 0.0168) : 0;
-  if (failing) ERRORS[id] = ROW_ERRORS.slice(0, 5).map((one) => ({ ...one }));
+  let failing = format === "CSV" ? Math.round(rows * 0.0168) : 0;
+  if (read) {
+    const checked = check(read);
+    READS[id] = { read, mapping: checked.mapping };
+    ERRORS[id] = checked.errors;
+    failing = checked.failing;
+    rows = read.rows.length;
+  } else if (failing) ERRORS[id] = ROW_ERRORS.slice(0, 5).map((one) => ({ ...one }));
   addBatch({
     id,
     contributor: TENANT_ID,
@@ -143,16 +182,34 @@ export function receive(file: string, format: Format, channel: Channel, rows: nu
   return id;
 }
 
-/** The corrected file resubmitted over the same batch: its rows checked again, nothing ingested yet. */
-export function resubmit(batchId: string, file: string) {
+/**
+ * The corrected file resubmitted over the same batch: its rows checked again, nothing ingested
+ * yet. Read here, it is checked row by row and may fail again; otherwise it is taken as fixed.
+ */
+export function resubmit(batchId: string, file: string, read?: ReadResult): boolean {
   const batch = batchById(batchId)!;
+  if (read) {
+    const checked = check(read);
+    READS[batchId] = { read, mapping: checked.mapping };
+    ERRORS[batchId] = checked.errors;
+    const rows = read.rows.length;
+    setBatchState(batchId, { file, rows, validated: rows - checked.failing, errors: checked.failing, state: checked.failing ? "Row errors" : "Validating" });
+    return checked.failing === 0;
+  }
   ERRORS[batchId] = [];
   setBatchState(batchId, { file, validated: batch.rows, errors: 0, state: "Validating" });
+  return true;
 }
 
 /** The failed rows taken out: the batch goes on with the rows that passed. */
 export function dropFailed(batchId: string) {
   const batch = batchById(batchId)!;
+  const kept = READS[batchId];
+  if (kept) {
+    const rows = passing(kept.read, ERRORS[batchId] ?? []);
+    const lines = kept.read.lines.filter((line) => !(ERRORS[batchId] ?? []).some((one) => one.row === line));
+    READS[batchId] = { ...kept, read: { ...kept.read, rows, lines } };
+  }
   ERRORS[batchId] = [];
   setBatchState(batchId, { rows: batch.validated, errors: 0, state: "Validating" });
 }
@@ -161,24 +218,67 @@ export function dropFailed(batchId: string) {
 export function ingest(batchId: string) {
   const batch = batchById(batchId)!;
   const rows = batch.validated;
-  const conflicting = Math.round(rows * 0.016);
-  const unmatched = Math.round(rows * 0.024);
-  const fresh = Math.round(rows * 0.19);
-  const results = { matched: rows - conflicting - unmatched - fresh, new: fresh, conflicting, unmatched };
+  const kept = READS[batchId];
+  let results = (() => {
+    const conflicting = Math.round(rows * 0.016);
+    const unmatched = Math.round(rows * 0.024);
+    const fresh = Math.round(rows * 0.19);
+    return { matched: rows - conflicting - unmatched - fresh, new: fresh, conflicting, unmatched };
+  })();
+  let records = sampleOf(batch);
+  if (kept) {
+    // Read here: every row that passed is matched against the graph, and the counts are its own.
+    records = matchRows(batch, kept.read, kept.mapping);
+    results = { matched: 0, new: 0, conflicting: 0, unmatched: 0 };
+    for (const one of records) results[one.state === "New" ? "new" : (one.state.toLowerCase() as "matched" | "conflicting" | "unmatched")]++;
+  }
   upliftFrom(batch);
-  MATCH_RECORDS = [...sampleOf(batch), ...MATCH_RECORDS];
+  MATCH_RECORDS = [...records, ...MATCH_RECORDS];
   addAccess(TENANT_ID, { at: now(), who: "Resolver v1.3", via: `Internal · match job for ${batch.id}`, what: `Shared fields, ${formatCount(rows, { one: "row", many: "rows" })}` });
   setBatchState(batchId, { ingested: rows, matched: rows, state: "Matched", results });
 }
 
 /**
- * Failed rows, handed over as the CSV they would be fixed in. The system has no command that gives
- * the reader a file (gaps, 9): the file is opened as an address, which a browser saves.
+ * Failed rows, handed over as the CSV they would be fixed in, named for the batch: each error's
+ * row, field, value and problem — and, where the file was read here, the row as the file wrote
+ * it, every one of its own columns after the problem.
  */
 export function downloadFailedRows(batch: Batch) {
-  const quote = (cell: string | number) => `"${String(cell).replace(/"/g, '""')}"`;
-  const lines = ["row,field,value,problem", ...rowErrorsOf(batch.id).map((one) => [one.row, one.field, one.value, one.problem].map(quote).join(","))];
-  follow(URL.createObjectURL(new File([lines.join("\n")], `${batch.id}_failed_rows.csv`, { type: "text/csv" })));
+  const kept = READS[batch.id]?.read;
+  const own = kept?.headers ?? [];
+  const rowAt = (line: number): FileRow => (kept ? (kept.rows[kept.lines.indexOf(line)] ?? {}) : {});
+  downloadCsv(
+    `${batch.id}_failed_rows.csv`,
+    [
+      { name: "row", value: (one: RowError) => one.row },
+      { name: "field", value: (one: RowError) => one.field },
+      { name: "value", value: (one: RowError) => one.value },
+      { name: "problem", value: (one: RowError) => one.problem },
+      ...own.map((header) => ({ name: header, value: (one: RowError) => rowAt(one.row)[header] })),
+    ],
+    rowErrorsOf(batch.id),
+  );
+}
+
+/** Match records handed over as a CSV — every one a reading shows, under the name it is taken as. */
+export function exportMatches(name: string, records: readonly MatchRecord[]) {
+  downloadCsv(
+    name,
+    [
+      { name: "batch", value: (one: MatchRecord) => one.batch },
+      { name: "state", value: (one: MatchRecord) => one.state },
+      { name: "kind", value: (one: MatchRecord) => one.kind },
+      { name: "title", value: (one: MatchRecord) => one.title },
+      { name: "credited", value: (one: MatchRecord) => one.by },
+      { name: "code", value: (one: MatchRecord) => one.code },
+      { name: "matched_to", value: (one: MatchRecord) => one.matchedTo },
+      { name: "method", value: (one: MatchRecord) => one.method },
+      { name: "confidence", value: (one: MatchRecord) => one.confidence },
+      { name: "reason", value: (one: MatchRecord) => one.reason },
+      { name: "conflict", value: (one: MatchRecord) => one.conflict },
+    ],
+    records,
+  );
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -187,6 +287,12 @@ export function downloadFailedRows(batch: Batch) {
 export type MappingRow = (typeof MAPPING)[number];
 let MAPPINGS: MappingRow[] = MAPPING.map((one) => ({ ...one }));
 export const mappings = (): readonly MappingRow[] => MAPPINGS;
+/** The file whose headers the mapping holds: the Q3 splits file, until one is read here. */
+let MAPPING_SOURCE = "MMG_publishing_splits_Q3.csv";
+export const mappingSource = () => MAPPING_SOURCE;
+/** Whether the mapping holds a file read here — its fields suggested by name, not by a saved mapping. */
+let MAPPED_BY_NAME = false;
+export const mappedByName = () => MAPPED_BY_NAME;
 
 export function confirmMappings(headers: readonly string[]) {
   MAPPINGS = MAPPINGS.map((one) => (headers.includes(one.header) && one.target ? { ...one, state: "Completed" as const } : one));
@@ -252,13 +358,63 @@ let MATCH_RECORDS: MatchRecord[] = [
   { id: "mr-4", batch: "b-3107", kind: "Recording", title: "Velvet Hours", by: "Juno Vale", code: "USMM12600118", standard: "isrc", state: "New", reason: "The graph held nothing like it; added as a new recording at T1." },
   { id: "mr-5", batch: "b-3107", kind: "Recording", title: "Afterglow District", by: "Rae Okonkwo", code: "USMM12600207", standard: "isrc", state: "New", reason: "Unreleased elsewhere; added with your claim as its only source." },
   { id: "mr-6", batch: "b-3101", kind: "Work", title: "Low Season", by: "K. Moreau", code: "T-918.240.771-2", standard: "iswc", state: "New", reason: "No work with this ISWC or title and writer; added at T1." },
-  { id: "mr-7", batch: "b-3101", kind: "Work", title: "Tide Water", by: "A. Lindgren, K. Moreau", code: "T-912.448.301-6", standard: "iswc", state: "Conflicting", matchedTo: "w-tidewater", method: "Lyric fingerprint", confidence: 0.79, reason: "Same work; your writer shares sum to 125% in eight European territories.", conflict: "cf-8" },
+  { id: "mr-7", batch: "b-3101", kind: "Work", title: "Tide Water", by: "A. Lindgren, K. Moreau", code: "T-912.448.301-8", standard: "iswc", state: "Conflicting", matchedTo: "w-tidewater", method: "Lyric fingerprint", confidence: 0.79, reason: "Same work; your writer shares sum to 125% in eight European territories.", conflict: "cf-8" },
   { id: "mr-8", batch: "b-3107", kind: "Recording", title: "Harbour Lights", by: "Mira Castellanos", code: "USMM12400702", standard: "isrc", state: "Conflicting", matchedTo: "GR-00611390", method: "Audio fingerprint", confidence: 0.93, reason: "Same audio as a recording another tenant controls; both claim the master in GB. Queued for Sureel ops." },
   { id: "mr-9", batch: "b-3107", kind: "Recording", title: "Untitled 14", by: "Unknown", code: "USMM12699914", standard: "isrc", state: "Unmatched", reason: "No title, artist or audio to place it on, and too thin to add: fix the row and resubmit." },
   { id: "mr-10", batch: "b-3101", kind: "Work", title: "Medley (Live)", by: "Various", code: "T-000.000.000-0", standard: "iswc", state: "Unmatched", reason: "The ISWC is a placeholder and no writer is named." },
 ];
 
 export const matchRecords = (): readonly MatchRecord[] => MATCH_RECORDS;
+
+/**
+ * A batch read here, matched row by row against the graph: a recording by its ISRC, a work by its
+ * ISWC, then by title. A row whose code the graph does not hold, with a title to add it by, is New;
+ * a row with neither is Unmatched. A work matched where the graph already holds the publisher side
+ * whole, and this row claims more of it, is Conflicting. One record per recording or work.
+ */
+function matchRows(batch: Batch, read: ReadResult, mapping?: Record<string, string | undefined>): MatchRecord[] {
+  const seen = new Set<string>();
+  const out: MatchRecord[] = [];
+  read.rows.forEach((row, index) => {
+    const get = (field: string) => fieldIn(row, field, mapping);
+    const isrc = get("Recording ISRC").toUpperCase();
+    const iswc = get("ISWC") ? iswcWritten(get("ISWC")) : "";
+    // A publishing row (a work's code, a writer or a publisher on it) is a work; an ERN row a recording.
+    const publishing = batch.format !== "DDEX ERN" && Boolean(iswc || get("Writer name") || get("Publisher name"));
+    const kind: MatchRecord["kind"] = publishing || !isrc ? "Work" : "Recording";
+    const code = kind === "Work" ? iswc : isrc;
+    const title = (kind === "Work" ? get("Work title") : get("Recording title") || get("Work title")) || "Untitled";
+    const key = `${kind}/${code || title}`.toUpperCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    const by = get("Writer name") || get("Artist") || get("Publisher name") || "Unknown";
+    const sameTitle = (one: { title: string }) => one.title.toLowerCase() === title.toLowerCase();
+    const graphKind = kind === "Work" ? "Work" : "Recording";
+    const byCode = ASSETS.find((one) => one.kind === graphKind && code && (kind === "Work" ? one.iswc === code : one.isrc === code));
+    const byTitle = byCode ? undefined : ASSETS.find((one) => one.kind === graphKind && sameTitle(one));
+    const found = byCode ?? byTitle;
+    const base = { id: `${batch.id}-${index + 1}`, batch: batch.id, kind, title, by, code, standard: kind === "Work" ? ("iswc" as const) : ("isrc" as const) };
+    if (found) {
+      const conflict = kind === "Work" ? CONFLICTS.find((one) => one.assetId === found.id && one.state !== "Resolved") : undefined;
+      out.push({
+        ...base,
+        state: conflict ? "Conflicting" : "Matched",
+        matchedTo: found.id,
+        method: byCode ? (kind === "Work" ? "ISWC exact" : "ISRC exact") : "Title",
+        confidence: byCode ? 1 : 0.82,
+        reason: conflict
+          ? `Matched to ${found.title}, which already has an open conflict: your claim joins it for Sureel ops.`
+          : byCode
+            ? `Same ${kind === "Work" ? "ISWC" : "ISRC"} as the graph's ${found.title}; your claim is added beside the ones it holds.`
+            : `No code to match by; the title is the graph's ${found.title}. Matched below auto-accept, waiting on a reviewer.`,
+        conflict: conflict && conflict.parties.includes(TENANT_ID) ? conflict.id : undefined,
+      });
+    } else if (code || title !== "Untitled")
+      out.push({ ...base, state: "New", reason: `The graph held nothing with this ${code ? (kind === "Work" ? "ISWC" : "ISRC") : "title"}; added at T1 with your claim as its source.` });
+    else out.push({ ...base, state: "Unmatched", reason: "No code and no title to place it on: fix the source row and send it again." });
+  });
+  return out;
+}
 
 /** A newly matched batch's sample — one record of each outcome, drawn from its own rows. */
 function sampleOf(batch: Batch): MatchRecord[] {

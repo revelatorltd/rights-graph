@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Alert,
   Avatar,
@@ -9,6 +10,7 @@ import {
   Field,
   FormDialog,
   Metadata,
+  UploaderDocument,
   WayOut,
   owed,
   type HeldBy,
@@ -17,8 +19,9 @@ import {
 import { SIGNING_KEYS } from "../../graph/fixtures";
 import type { ProofEvent } from "../../graph/model";
 import { go, href } from "../../route";
-import { download } from "../partner/working";
-import { archive, archivedBy, batchOf, batches, importedEvent, inclusionPath, keyOf, publicKeyOf, type ArchivedRecord, type Batch } from "./data";
+import { ChosenRow, SampleFiles, type Chosen } from "../../rights/file-parts";
+import { checkReceipt, downloadJson, proofBundle, readFile } from "../../rights/files";
+import { archive, archivedBy, batchOf, batches, importedEvent, inclusionPath, keyOf, proofOf, publicKeyOf, type ArchivedRecord, type Batch } from "./data";
 
 export const verifyHref = (...path: (string | undefined)[]) => href("verify", ...path);
 
@@ -68,30 +71,100 @@ export function ArchiveDialog(held: HeldBy) {
 export function downloadBundle(event: ProofEvent) {
   const batch = batchOf(event);
   const key = keyOf(event.keyId);
-  download(`proof-${event.receipt ?? event.seq}.json`, {
-    event: {
-      seq: event.seq,
-      type: event.type,
-      subject: event.subject,
-      scope: event.scope,
-      use: event.use,
-      at: event.at,
-      receipt: event.receipt,
-      payloadHash: event.payloadHash,
-      prevHash: event.prevHash,
-      eventHash: event.eventHash,
-      chain: event.chain,
-    },
-    signature: { key: event.keyId, algorithm: key?.algorithm, publicKey: publicKeyOf(event.keyId), value: `sig_${event.eventHash.slice(0, 48)}` },
-    inclusion: { batch: batch.id, root: batch.root, path: inclusionPath(event) },
-    timestamp: batch.tsa,
-    check: [
-      "Hash the payload you hold (RFC 8785 canonical JSON, SHA-256): it must equal payloadHash.",
-      "Verify the signature over eventHash with the public key.",
-      "Fold eventHash up the inclusion path: it must reach the batch root.",
-      "Verify the RFC 3161 token over the root: it proves the root existed at its time.",
-    ],
-  });
+  downloadJson(
+    `proof-${event.receipt ?? event.seq}.json`,
+    proofBundle({
+      event: {
+        seq: event.seq,
+        type: event.type,
+        subject: event.subject,
+        scope: event.scope,
+        use: event.use,
+        at: event.at,
+        receipt: event.receipt,
+        payloadHash: event.payloadHash,
+        prevHash: event.prevHash,
+        eventHash: event.eventHash,
+        chain: event.chain,
+      },
+      signature: { key: event.keyId, algorithm: key?.algorithm, publicKey: publicKeyOf(event.keyId), value: `sig_${event.eventHash.slice(0, 48)}` },
+      inclusion: { batch: batch.id, root: batch.root, path: inclusionPath(event) },
+      timestamp: batch.tsa,
+      check: [
+        "Hash the payload you hold (RFC 8785 canonical JSON, SHA-256): it must equal payloadHash.",
+        "Verify the signature over eventHash with the public key.",
+        "Fold eventHash up the inclusion path: it must reach the batch root.",
+        "Verify the RFC 3161 token over the root: it proves the root existed at its time.",
+      ],
+    }),
+  );
+}
+
+/** What a receipt file came to, checked against the log. */
+interface Checked {
+  event?: ProofEvent;
+  intact?: boolean;
+  problem?: string;
+}
+
+/** A receipt file read and checked: its digest recomputed, its event found in the log, its event hash the log's. */
+async function checkFile(file: File): Promise<Checked> {
+  try {
+    const said = await checkReceipt(await readFile(file));
+    const event = proofOf(said.receipt ?? String(said.event ?? ""));
+    if (!event) return { problem: `The Proof Log holds no event for ${said.receipt ?? said.event ?? "what this file names"}.` };
+    if (said.eventHash && said.eventHash !== event.eventHash) return { event, problem: "The event hash in the file is not the one the log holds for this event." };
+    if (said.intact === false) return { event, intact: false, problem: "The file was changed after it was issued: its digest no longer matches what it holds." };
+    return { event, intact: said.intact };
+  } catch {
+    return { problem: "Not a receipt or proof bundle: the file is not the JSON either is written as." };
+  }
+}
+
+/**
+ * A receipt file brought instead of pasted — the file a partner kept (S8, F6 step 2). It is read
+ * here, never sent: its digest is recomputed over what it holds now, its event found in the log
+ * and its event hash compared. Verified, the event's page opens.
+ */
+export function VerifyFileDialog(held: HeldBy) {
+  const [file, setFile] = useState<Chosen | null>(null);
+  const [checked, setChecked] = useState<Checked | null>(null);
+  const take = (picked: File | undefined) => {
+    setChecked(null);
+    if (!picked) return setFile(null);
+    setFile({ name: picked.name, size: picked.size, reading: true });
+    void checkFile(picked).then((result) => {
+      setChecked(result);
+      setFile({ name: picked.name, size: picked.size, refused: result.problem });
+    });
+  };
+  return (
+    <FormDialog
+      {...held}
+      confirm="Open the event"
+      onClose={() => {
+        setFile(null);
+        setChecked(null);
+      }}
+      ready={() => Boolean(checked?.event && !checked.problem)}
+      onCommit={() => go(verifyHref(encodeURIComponent(checked!.event!.receipt ?? String(checked!.event!.seq))))}
+    >
+      <UploaderDocument multiple={false} noun={{ one: "receipt file", many: "receipt files" }} formats="JSON" accept=".json" onSelect={(files) => take(files[0])}>
+        {file ? <ChosenRow chosen={file} onRemove={() => take(undefined)} /> : null}
+      </UploaderDocument>
+      {checked?.event && !checked.problem ? (
+        <Alert intent="success" title="The file matches the log">
+          {`Event ${checked.event.seq}, ${TYPE[checked.event.type]}: ${checked.intact ? "its digest holds over every field, and " : ""}its event hash is the one the Proof Log holds.`}
+        </Alert>
+      ) : null}
+      <SampleFiles
+        samples={[
+          { name: "receipt_sample.json", label: "Download a sample receipt" },
+          { name: "receipt_sample_altered.json", label: "Download an altered receipt" },
+        ]}
+      />
+    </FormDialog>
+  );
 }
 
 /** The public transparency log: every batch's root and the token that timestamps it. Where a visitor lands. */
@@ -100,6 +173,7 @@ export function Batches() {
     <CollectionPage
       title="Proof batches"
       actions={[{ label: "Verify a receipt", primary: true, mark: "verified", dialog: <VerifyDialog /> }]}
+      more={[{ label: "Verify a receipt file", mark: "upload", dialog: <VerifyFileDialog /> }]}
       index={{
         rows: batches(),
         rowKey: (one) => one.id,
@@ -113,7 +187,7 @@ export function Batches() {
           { name: "Root", as: "identifier", standard: "id", value: (one) => one.root },
           { name: "Timestamp token", as: "identifier", standard: "id", value: (one) => one.tsa.token },
         ],
-        commands: (one: Batch) => [{ label: "Download root and token", opens: () => download(`${one.id}.json`, one) }],
+        commands: (one: Batch) => [{ label: "Download root and token", opens: () => downloadJson(`${one.id}.json`, one) }],
         chooser: false,
       }}
     />
@@ -136,7 +210,7 @@ export function Keys() {
           { name: "Signs from", as: "date", value: (one) => one.from },
           { name: "Until", as: "date", value: (one) => one.to },
         ],
-        commands: (one) => [{ label: "Download public key", opens: () => download(`${one.id}.pub.json`, { ...one, publicKey: publicKeyOf(one.id) }) }],
+        commands: (one) => [{ label: "Download public key", opens: () => downloadJson(`${one.id}.pub.json`, { ...one, publicKey: publicKeyOf(one.id) }) }],
         chooser: false,
       }}
     />
@@ -163,7 +237,10 @@ export function EventDetail({ event }: { event: ProofEvent }) {
           { as: "date", value: event.at, grain: "minute", label: "Recorded" },
         ],
         actions: [{ label: "Download proof bundle", primary: true, opens: () => downloadBundle(event) }],
-        more: [{ label: "Verify another", mark: "verified", dialog: <VerifyDialog /> }],
+        more: [
+          { label: "Verify another", mark: "verified", dialog: <VerifyDialog /> },
+          { label: "Verify a receipt file", mark: "upload", dialog: <VerifyFileDialog /> },
+        ],
       }}
     >
       <Metadata>

@@ -1,9 +1,12 @@
-import { Field, FormDialog, Icon, formatMeta, owed, type ActivitySave, type Command, type HeldBy } from "@revelator/pro-ui";
+import { Field, FormDialog, Icon, formatList, formatMeta, owed, type ActivitySave, type Command, type HeldBy } from "@revelator/pro-ui";
 import { faceFor } from "@revelator/pro-ui/assets";
 
 import { ATTESTATIONS, assetById, partyName } from "../../../graph/fixtures";
-import { GRAPH_VERSION, RULE_VERSION } from "../../../graph/resolve";
-import { EXPORTS, LABEL, exported, grantName, labelConflicts, labelGrants, labelRequests, rightsHref } from "./data";
+import { USES, type Asset, type Use } from "../../../graph/model";
+import { GRAPH_VERSION, RULE_VERSION, clearanceOf, tierOf, type Clearance } from "../../../graph/resolve";
+import { slug } from "../../../route";
+import { downloadCsv, printReport } from "../../../rights/files";
+import { EXPORTS, LABEL, exported, grantName, labelConflicts, labelGrants, labelRecordings, labelRequests, rightsHref } from "./data";
 
 /**
  * What more than one page of the label's Rights section says the same way: the export every list
@@ -13,17 +16,50 @@ import { EXPORTS, LABEL, exported, grantName, labelConflicts, labelGrants, label
 
 const FORMATS = [
   { value: "CSV", title: "CSV", description: "One row per asset and use, for a spreadsheet or a royalty engine." },
-  { value: "PDF", title: "PDF", description: "The report as the screen reads it, to send or file." },
+  { value: "PDF", title: "PDF", description: "The report as a printable page — save it as PDF from the print dialog." },
 ];
 
+/** One line of the report: an asset and a use, as the graph answers it now. */
+interface ReportLine {
+  asset: Asset;
+  use: Use;
+  answer: Clearance;
+}
+
+const REPORT_COLUMNS = [
+  { name: "Asset", value: (one: ReportLine) => one.asset.title },
+  { name: "ISRC", value: (one: ReportLine) => one.asset.isrc },
+  { name: "Use", value: (one: ReportLine) => one.use },
+  { name: "Clearance", value: (one: ReportLine) => one.answer.state },
+  { name: "Master", value: (one: ReportLine) => one.answer.master.state },
+  { name: "Composition", value: (one: ReportLine) => formatList(one.answer.composition.map((side) => side.state)) ?? "No work linked" },
+  { name: "Decided at", value: (one: ReportLine) => one.answer.decidedAt },
+  { name: "Tier", value: (one: ReportLine) => `T${tierOf(one.asset.id, one.use)}` },
+  { name: "Why", value: (one: ReportLine) => one.answer.reason },
+];
+
+/** The report's lines: every recording of the label's, every use, master and composition apart (G-3). */
+const reportLines = (): ReportLine[] => labelRecordings().flatMap((asset) => USES.map((use) => ({ asset, use, answer: clearanceOf(asset.id, use) })));
+
 /**
- * The rights and clearance report, taken as a file (S1-10). It carries the graph version and rule
- * version it was read at, so a file can be checked against the graph it came from. The prototype
- * keeps a log of what was taken; it hands no file over.
+ * The rights and clearance report, taken as a file (S1-10), named for what it was taken from and
+ * the graph version it was read at — which its first line says again, so a file can be checked
+ * against the graph it came from. CSV is a download; PDF is the report as a printable page, the
+ * browser's print dialog making the file (docs/gaps/files.md).
  */
 export function ExportReport({ of, ...held }: HeldBy & { of: string }) {
   return (
-    <FormDialog {...held} confirm="Export" draft={{ format: owed("CSV") }} onCommit={(draft) => exported(draft.format, of, GRAPH_VERSION)}>
+    <FormDialog
+      {...held}
+      confirm="Export"
+      draft={{ format: owed<string>("CSV") }}
+      onCommit={(draft) => {
+        exported(draft.format, of, GRAPH_VERSION);
+        const first = formatMeta(["Kestrel Point Recordings", of, `graph ${GRAPH_VERSION}`, `rule ${RULE_VERSION}`]) ?? of;
+        if (draft.format === "PDF") printReport(`Rights report — ${of}`, [first, "Clearance read for every recording and use, master and composition apart."], REPORT_COLUMNS, reportLines());
+        else downloadCsv(`kestrel-point_${slug(of)}_${GRAPH_VERSION}.csv`, REPORT_COLUMNS, reportLines(), first);
+      }}
+    >
       <Field
         as="choice"
         name="format"

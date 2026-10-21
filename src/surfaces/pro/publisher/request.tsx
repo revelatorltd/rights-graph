@@ -7,6 +7,7 @@ import { ClearanceBadge, TerritoryChip, decidedBy, partyMark } from "../../../ri
 import { ME, assetName, countryName, meta, myShare, rightsHref } from "./data";
 import { AI_CONDITION, COUNTERS, requestCommands, worksAsked } from "./decisions";
 import { askOf } from "./requests";
+import { EscalatedAlert } from "../../notify/escalated";
 
 const requestById = (id: string) => REQUESTS.find((one) => one.id === id)!;
 
@@ -42,6 +43,7 @@ export function RequestDetail({ id }: { id: string }) {
       }}
     >
       <Metadata>
+        <EscalatedAlert request={request} />
         {request.use && AI_USES.includes(request.use) ? (
           <Alert intent="warn" title="The writer's consent is a condition">
             {`AGR-101 §11.3: an AI use of Ana Lindgren's songs needs her written consent. A grant made here carries "${AI_CONDITION}".`}

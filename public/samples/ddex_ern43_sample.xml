@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/43" MessageSchemaVersionId="ern/43" LanguageAndScriptCode="en">
+  <MessageHeader>
+    <MessageId>MMG-ERN-2026-10-21-0001</MessageId>
+    <MessageSender><PartyId>PADPIDA2014120301X</PartyId><PartyName><FullName>Meridian Music Group</FullName></PartyName></MessageSender>
+    <MessageRecipient><PartyId>PADPIDA2025052001S</PartyId><PartyName><FullName>Sureel</FullName></PartyName></MessageRecipient>
+    <MessageCreatedDateTime>2026-10-21T08:00:00Z</MessageCreatedDateTime>
+  </MessageHeader>
+  <PartyList>
+    <Party><PartyReference>PMeridian</PartyReference><PartyName><FullName>Meridian Music Group</FullName></PartyName></Party>
+    <Party><PartyReference>PMira</PartyReference><PartyName><FullName>Mira Castellanos</FullName></PartyName></Party>
+  </PartyList>
+  <ResourceList>
+    <SoundRecording>
+      <ResourceReference>A1</ResourceReference>
+      <Type>MusicalWorkSoundRecording</Type>
+      <SoundRecordingEdition><ResourceId><ISRC>GBKPR2400118</ISRC></ResourceId>
+        <ResourceRightsController><RightsControllerPartyReference>PMeridian</RightsControllerPartyReference><RightsControlType>RightsController</RightsControlType><RightSharePercentage>100</RightSharePercentage></ResourceRightsController>
+      </SoundRecordingEdition>
+      <DisplayTitleText>Northbound</DisplayTitleText>
+      <DisplayArtist><ArtistPartyReference>PMira</ArtistPartyReference><DisplayArtistRole>MainArtist</DisplayArtistRole></DisplayArtist>
+      <Duration>PT3M41S</Duration>
+    </SoundRecording>
+    <SoundRecording>
+      <ResourceReference>A2</ResourceReference>
+      <Type>MusicalWorkSoundRecording</Type>
+      <SoundRecordingEdition><ResourceId><ISRC>USMM12600418</ISRC></ResourceId>
+        <ResourceRightsController><RightsControllerPartyReference>PMeridian</RightsControllerPartyReference><RightsControlType>RightsController</RightsControlType><RightSharePercentage>100</RightSharePercentage></ResourceRightsController>
+      </SoundRecordingEdition>
+      <DisplayTitleText>Salt and Signal</DisplayTitleText>
+      <DisplayArtist><ArtistPartyReference>PMira</ArtistPartyReference><DisplayArtistRole>MainArtist</DisplayArtistRole></DisplayArtist>
+      <Duration>PT4M02S</Duration>
+    </SoundRecording>
+  </ResourceList>
+  <ReleaseList>
+    <Release>
+      <ReleaseReference>R0</ReleaseReference>
+      <ReleaseType>Single</ReleaseType>
+      <ReleaseId><ICPN>5063217409917</ICPN></ReleaseId>
+      <DisplayTitleText>Northbound</DisplayTitleText>
+      <ResourceGroup><ResourceGroupContentItem><ReleaseResourceReference>A1</ReleaseResourceReference></ResourceGroupContentItem><ResourceGroupContentItem><ReleaseResourceReference>A2</ReleaseResourceReference></ResourceGroupContentItem></ResourceGroup>
+    </Release>
+  </ReleaseList>
+  <DealList>
+    <ReleaseDeal>
+      <DealReleaseReference>R0</DealReleaseReference>
+      <Deal><DealTerms><TerritoryCode>Worldwide</TerritoryCode><ValidityPeriod><StartDate>2026-11-01</StartDate></ValidityPeriod><UseType>Stream</UseType></DealTerms></Deal>
+    </ReleaseDeal>
+  </DealList>
+</ern:NewReleaseMessage>

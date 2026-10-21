@@ -2,7 +2,8 @@ import { Avatar, CollectionPage, ConfirmationDialog, formatList, type HeldBy } f
 
 import { ClearanceBadge } from "../../rights/kit";
 import { TEST_CATALOGUE, keysOf, rotateKey, standingOf, type Key } from "./data";
-import { download, type PartnerPage, type Working } from "./working";
+import { downloadCsv } from "../../rights/files";
+import { type PartnerPage, type Working } from "./working";
 
 const DOCS = "https://docs.sureel.example";
 
@@ -78,9 +79,10 @@ export function Sandbox({ working }: { working: Working }) {
         {
           label: "Download test catalogue",
           opens: () =>
-            download(
+            downloadCsv(
               "sureel-sandbox-catalogue.csv",
-              ["isrc,iswc,title,use,master,composition,answer", ...TEST_CATALOGUE.map((one) => [one.isrc, one.iswc ?? "", one.title, one.use, one.master, one.composition, one.answer].join(","))].join("\n"),
+              (["isrc", "iswc", "title", "use", "master", "composition", "answer"] as const).map((key) => ({ name: key, value: (one: (typeof TEST_CATALOGUE)[number]) => one[key] })),
+              TEST_CATALOGUE,
             ),
         },
       ]}

@@ -1,6 +1,8 @@
 import { AppShell, type ShellProduct } from "@revelator/pro-ui";
 import { ORGANIZATIONS } from "@revelator/pro-ui/assets";
 
+import { noticeCommand, noticePage, noticeSection } from "../notify/pages";
+import { contributorSeat } from "../notify/seats";
 import type { PageOf } from "../surface";
 import { AccessLog } from "./access";
 import { contributorHref } from "./address";
@@ -21,7 +23,7 @@ import { UploadFlow } from "./upload";
  * The workspace wears Fieldhouse's mark as a STAND-IN: the system ships no Sureel mark and no
  * white-label layer to carry Sureel's logo and accent (docs/gaps/s5-contributor.md, 1–2).
  */
-const PRODUCT: ShellProduct = {
+const product = (): ShellProduct => ({
   workspace: { name: "Meridian Music Group", mark: ORGANIZATIONS.fieldhouse.art },
   destinations: [
     {
@@ -95,9 +97,11 @@ const PRODUCT: ShellProduct = {
     name: "Dana Whitfield",
     email: "dana.whitfield@meridianmusic.example",
     // Signing out leaves the portal, which this prototype does not model.
-    commands: [[{ label: "Sign out", opens: () => {} }]],
+    commands: [[noticeCommand(contributorSeat)], [{ label: "Sign out", opens: () => {} }]],
   },
-};
+  // Notifications (S4-4, S7-8): a policy change, a conflict, a batch result — from the account menu.
+  offRail: [noticeSection(contributorSeat)],
+});
 
 /** Every page of the portal, by its address segment. */
 const PAGES: Record<string, PageOf> = {
@@ -114,6 +118,7 @@ const PAGES: Record<string, PageOf> = {
   charter: () => ({ place: { at: "Governance", page: "Charter" }, page: <Charter /> }),
   audits: () => ({ place: { at: "Governance", page: "Audit reports" }, page: <AuditReports /> }),
   keys: () => ({ place: { at: "Governance", page: "Signing keys" }, page: <SigningKeys /> }),
+  notifications: (rest) => noticePage(contributorSeat, rest),
 };
 
 /** `#/contributor/<page>/<id>/<facet>` */
@@ -122,7 +127,7 @@ export function ContributorPortal({ path }: { path: readonly string[] }) {
   const shown = (PAGES[page] ?? PAGES.overview!)(rest);
   if ("cover" in shown) return shown.cover;
   return (
-    <AppShell product={PRODUCT} place={shown.place}>
+    <AppShell product={product()} place={shown.place}>
       {shown.page}
     </AppShell>
   );

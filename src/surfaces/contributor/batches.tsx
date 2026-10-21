@@ -27,6 +27,7 @@ import {
   matchRecords,
   MATCH_STATES,
   downloadFailedRows,
+  exportMatches,
   dropFailed,
   ingest,
   ownBatches,
@@ -162,7 +163,13 @@ function BatchDetail({ batch, facet }: { batch: Batch; facet: BatchFacet }) {
       },
       body: <BatchRowErrors batch={batch} />,
     },
-    "Match results": { header: { name: "Match results" }, body: <BatchMatches batch={batch} /> },
+    "Match results": {
+      header: {
+        name: "Match results",
+        actions: batch.state === "Matched" ? [{ label: "Export match results", mark: "download", opens: () => exportMatches(`${batch.id}_match_results.csv`, matchRecords().filter((one) => one.batch === batch.id)) }] : [],
+      },
+      body: <BatchMatches batch={batch} />,
+    },
   };
   const shown = FACETS[facet];
   const actions =
@@ -275,7 +282,7 @@ function BatchRowErrors({ batch }: { batch: Batch }) {
   return (
     <RecordIndex
       rows={errors}
-      rowKey={(one) => String(one.row)}
+      rowKey={(one) => `${one.row}/${one.field}`}
       noun={{ one: "failed row", many: "failed rows" }}
       identity={{ title: "Row", name: (one) => `Row ${one.row}`, value: (one) => one.row, as: "reference" }}
       note={

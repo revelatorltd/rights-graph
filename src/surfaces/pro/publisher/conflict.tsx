@@ -27,6 +27,7 @@ import {
   type RecordNavProps,
   type ShellPlace,
 } from "@revelator/pro-ui";
+import { keepEvidence } from "../../../rights/files";
 
 import { AGREEMENTS, conflictById, partyById, partyName } from "../../../graph/fixtures";
 import { COUNTERCLAIM_STEPS, type Assertion, type Conflict, type Interest, type ShareType, type TerritorySet } from "../../../graph/model";
@@ -99,6 +100,7 @@ function UploadEvidence({ conflict, ...held }: HeldBy & { conflict: Conflict }) 
       draft={{ agreement: owed(agreements.find((one) => one.kind === "Sub-publishing")?.id ?? agreements[0]!.id) }}
       onCommit={(draft) => {
         const agreement = AGREEMENTS.find((one) => one.id === draft.agreement);
+        keepEvidence(files);
         for (const file of files) fileEvidence(conflictById(conflict.id), { name: file.name, size: file.size, agreement: agreement?.code });
         setFiles([]);
       }}

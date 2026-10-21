@@ -275,7 +275,7 @@ function UploadEvidence({ conflict, ...held }: HeldBy & { conflict: Conflict }) 
       draft={{ note: unanswered.longtext }}
       ready={file !== null}
       onCommit={() =>
-        updateConflict(conflict.id, { state: "Awaiting evidence", step: Math.max(conflict.step, 1) })
+        updateConflict(conflict.id, { state: "Awaiting evidence", step: Math.max(conflict.step, 1) }, "p-meridian")
       }
     >
       <UploaderDocument multiple={false} formats="PDF" noun={{ one: "agreement", many: "agreements" }} onSelect={(files) => setFile(files[0] ?? null)}>
@@ -305,8 +305,8 @@ function CorrectClaim({ conflict, claim, ...held }: HeldBy & { conflict: Conflic
             step: 3,
             total: sum,
             resolution: { actor: "Resolver v1.3", onBehalfOf: "Sureel", at: now(), reason: `Meridian Music Group corrected its claim: writer shares now total ${formatPercent(sum)}.`, rule: "Resolver v1.3 · supersede" },
-          });
-        else updateConflict(conflict.id, { total: sum });
+          }, "p-meridian");
+        else updateConflict(conflict.id, { total: sum }, "p-meridian");
       }}
     >
       {claim.shares.map((one, at) => (
@@ -329,7 +329,7 @@ function WithdrawClaim({ conflict, ...held }: HeldBy & { conflict: Conflict }) {
           state: "Resolved",
           step: 3,
           resolution: { actor: "Meridian Music Group admin", at: now(), reason: "Meridian Music Group withdrew its claim." },
-        })
+        }, "p-meridian")
       }
     />
   );

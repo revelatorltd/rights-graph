@@ -1,5 +1,89 @@
 [
   {
+    "surface": "Files: reading and download (S1, S1·T, S2, S5, S6, S8)",
+    "id": "F1",
+    "asked": "A download command (gaps.md B6): a command that hands the reader a file under a name the product gives",
+    "frd": "S1-10, S5-3, S6-6, S8-3",
+    "here": "check:page reads every file under src/ as a page and refuses an anchor made and pressed from code, so the two DOM touch-points (saveBlob, printTable) live in platform/save.ts, OUTSIDE src/; everything that decides the name and content stays in src/rights/files.ts and is checked. Proposed: downloads: { name, type, make } on Command and PageAction, drawn with the download mark, the system owning the anchor. platform/save.ts goes when it lands."
+  },
+  {
+    "surface": "Files: reading and download (S1, S1·T, S2, S5, S6, S8)",
+    "id": "F2",
+    "asked": "A command inside a form row — \"Use the sample file\", \"Download a sample file\"",
+    "frd": "S5-1, S6-5, S6-8, S8",
+    "here": "Link takes only an address, so these are Button variant=\"inline\" with onClick beside the uploader. Proposed: Link opens takes a command as follow() does, or UploaderDocument gains a sample: { name, make } part."
+  },
+  {
+    "surface": "Files: reading and download (S1, S1·T, S2, S5, S6, S8)",
+    "id": "F3",
+    "asked": "A file being read, then refused with its reason in the uploader row",
+    "frd": "S5-1, S5-2",
+    "here": "UploaderFileRow phase uploading while it is read, error with reason when refused (Parquet, not CWR, no ISRC column, a changed receipt). Fits; shared in src/rights/file-parts.tsx."
+  },
+  {
+    "surface": "Files: reading and download (S1, S1·T, S2, S5, S6, S8)",
+    "id": "F4",
+    "asked": "A machine date in a written file (ISO 8601)",
+    "frd": "S1-10, S5-3",
+    "here": "check:page refuses toISOString and toJSON, and the formatters write for a reader. CSV dates go through formatDate(…, \"day\"); JSON dates are written by JSON.stringify (ISO). Proposed: a formatDate(…, \"iso\") grain, or a stated exemption for serialisation."
+  },
+  {
+    "surface": "Files: reading and download (S1, S1·T, S2, S5, S6, S8)",
+    "id": "F5",
+    "asked": "A file field in a declared form (gaps.md B12)",
+    "frd": "S1·T, S2, S6",
+    "here": "UploaderDocument beside the form's fields, its file held in the dialog's state, ready reading that state."
+  },
+  {
+    "surface": "Files: reading and download (S1, S1·T, S2, S5, S6, S8)",
+    "id": "F6",
+    "asked": "Evidence facts on a claim: the model keeps Assertion.evidence as names only",
+    "frd": "S1·T-?, S2-6",
+    "here": "The facts (size, type, format) are kept in src/rights/files.ts by file name (keepEvidence, evidenceFacts) and shown on the claim's Evidence card; lost on reload, and two files of one name share facts. Proposed for the model: evidence: { name, size, type, hash, filedAt }[]."
+  },
+  {
+    "surface": "Files: reading and download (S1, S1·T, S2, S5, S6, S8)",
+    "id": "F7",
+    "asked": "Print as PDF for the rights report",
+    "frd": "S1-10",
+    "here": "PDF is the browser's print dialog over a hidden frame (printTable); no file is generated. A real PDF wants a server render or a PDF writer."
+  },
+  {
+    "surface": "Files: reading and download (S1, S1·T, S2, S5, S6, S8)",
+    "id": "F8",
+    "asked": "A signature the browser can check",
+    "frd": "S6-6, S8-3",
+    "here": "The receipt's digest is real SHA-256 over canonical JSON, so a changed receipt is caught; the Ed25519 signature is still the stand-in value the log fixtures carry."
+  },
+  {
+    "surface": "Files: reading and download (S1, S1·T, S2, S5, S6, S8)",
+    "id": "F9",
+    "asked": "Parquet",
+    "frd": "S5-1",
+    "here": "Refused in the browser with its reason (\"send it by SFTP or the API\"); a fed Parquet batch keeps the feed's counts."
+  },
+  {
+    "surface": "Files: reading and download (S1, S1·T, S2, S5, S6, S8)",
+    "id": "F10",
+    "asked": "CWR 3.x positions",
+    "frd": "S5-1, S6-8",
+    "here": "Version read from GRH; records read with the 2.1 positions. A 3.x file whose layouts moved reads its ACK status and title, not its shares."
+  },
+  {
+    "surface": "Files: reading and download (S1, S1·T, S2, S5, S6, S8)",
+    "id": "F11",
+    "asked": "Zipped DDEX (.zip deliveries, as the feeds name them)",
+    "frd": "S5-1",
+    "here": "Refused (\"zipped files are not opened here\")."
+  },
+  {
+    "surface": "Files: reading and download (S1, S1·T, S2, S5, S6, S8)",
+    "id": "F12",
+    "asked": "Mapping changes after a check",
+    "frd": "S5-9",
+    "here": "The check reads the file through the mapping as suggested at upload (settled + suggested fields); remapping a header on Field mapping does not re-check a batch already received — resubmit the file."
+  },
+  {
     "surface": "the map (home)",
     "id": "1",
     "asked": "A long record name in the record header (a flow's or a question's full sentence)",
@@ -1008,6 +1092,272 @@
     "here": "The Activity title carries the sentence. Decided by is also a column, but a phone shows only the first columns, so the title is where the \"for [artist]\" line is guaranteed to show."
   },
   {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "1",
+    "asked": "Which assurance level Voice/NIL signing needs",
+    "frd": "S3-1, FRD open question (Sureel, WMG legal)",
+    "here": "Assumed: Basic = email or phone proved by a code; Verified = a label or Sureel confirmed one of the person's claims; Verified + ID = that, plus a passed government-ID check with a live selfie. Profile › Identity & verification says which level allows what, and marks the Voice/NIL line as an assumption. It is not enforced: Consent's switches (consent.tsx, another builder's) don't check the level yet."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "2",
+    "asked": "An assurance badge (Basic / Verified / Verified + ID)",
+    "frd": "S3-1",
+    "here": "No status family holds a level. verification:Pending is drawn for Basic and verification:Verified for both higher levels, with the level written beside it (\"ArtistID Verified + ID\"). A assurance family of three is owed. This is the same gap as s3-artist #15."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "3",
+    "asked": "An ID-document photo uploader and a camera capture (front, back)",
+    "frd": "S3-1",
+    "here": "UploaderArtwork, the square cover uploader. It frames an ID card as a cover and can't ask for the camera (capture). No uploader in the system says \"a photo of a document\"."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "4",
+    "asked": "A selfie / liveness step (live camera, head-turn prompt)",
+    "frd": "S3-1",
+    "here": "UploaderAvatar with the instruction in its prompt. Nothing in the system draws a live camera or a liveness challenge. The check itself is simulated."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "5",
+    "asked": "A one-time code field (six boxes, paste, resend, countdown)",
+    "frd": "S3-1",
+    "here": "Field as=\"text\", checked by the wizard's ready. No code or OTP kind exists, and there is no resend control. The code is shown in an info Alert (\"Prototype: nothing was sent\") because row tips are not drawn in one hand, so a tip would hide it on a phone."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "6",
+    "asked": "A check running inside a step (progress, then an outcome)",
+    "frd": "S3-1",
+    "here": "Progress (label + reading of what it is doing) on the ID check stage, then an Alert per outcome. ProgressDialog is for a run over a table of rows, so it doesn't fit one check. There is no declared \"async step\" state for a stepped wizard: ready holds the commit while it runs."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "7",
+    "asked": "Choosing the simulated outcome (passed / needs another photo / failed)",
+    "frd": "",
+    "here": "A \"Prototype\" row on the photos stage, Field as=\"choice\", so a reviewer can see each path. In the product it would not exist."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "8",
+    "asked": "Retake from inside the result",
+    "frd": "S3-1",
+    "here": "An inline Button in the warn Alert sends the reader back to ID photos and clears the front photo. An Alert has no action slot, and a stepped wizard has no \"go back to stage n\" command other than its map."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "9",
+    "asked": "Stages that branch on an answer (a delegate takes a two-stage path)",
+    "frd": "Roles: Delegate",
+    "here": "stages is swapped when role is Delegate. The role is lifted out of the form with a small useAnswer follower, because stages is decided outside the draft. A wizard whose map follows an answer is not a declared shape."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "10",
+    "asked": "Search the graph's parties by name, IPI or ISNI and pick several",
+    "frd": "S3-2",
+    "here": "Field as=\"record\" several, with each option's code set to its ISNI or IPI. This works because the option search matches the code too. But an option holds only one code: a person with both an IPI and an ISNI is searchable by one only, and the code shows without its standard (no per-option standard)."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "11",
+    "asked": "Claim confirmed by the label or Sureel",
+    "frd": "S3-2",
+    "here": "A claim is an Attestation request to the confirmer (addRequest). Its state IS the claim's: Approved means verified, Declined means refused. The label confirms in Pro › Requests (one line each in pro/label/request-dialogs.tsx and requests.tsx hands an ArtistID claim its own Confirm / Decline instead of Approve, which would have written a grant with no use). Sureel confirms in a new Console › Matching › ArtistID claims (console/where.ts + index.tsx, one entry each). Only Kestrel works in Pro, so it is the only label offered. The model has no ClaimType for \"identity confirmed\", so no attestation is signed. The decision lives on the request (G-5: \"Priya Raman · for Kestrel Point Recordings\")."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "12",
+    "asked": "An entry already held by another ArtistID, or claimed twice",
+    "frd": "S3-2",
+    "here": "Not offered in the search, and a tip says Sureel resolves it. No dispute is opened: an identity conflict is not a ConflictKind."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "13",
+    "asked": "A person not in the graph yet",
+    "frd": "S3-2",
+    "here": "They can skip claiming. Their ArtistID is a party of its own (p-aid-n) with nothing credited, and stays Basic. Creating a new artist entry from sign-up is not built."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "14",
+    "asked": "Unclaimed entries to find",
+    "frd": "S3-2",
+    "here": "Four invented entries are added to PARTIES from identity.ts: Noa Brightwater (artist, ISNI), N. Brightwater (writer, IPI), Kai Moreno, Sol Varga. They have no credits, so once confirmed the app is honestly empty. Every seeded artist or writer already holds an ArtistID."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "15",
+    "asked": "The app switching subject once a claim is confirmed",
+    "frd": "S3-2",
+    "here": "The \"New artist\" reader is the ArtistID's own party until a claim is confirmed. After that it is the confirmed entry (the artist entry for an artist, the writer entry for a writer; Both opens writer mode). Two parties for one person is really a merge, which this does not perform."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "16",
+    "asked": "Delegate's own path: accept an invitation, never sign up for the artist",
+    "frd": "Roles: Delegate, S3-8",
+    "here": "\"Someone acting for an artist\" turns the wizard into Accept invitation. It looks up the artist's Invited delegate by email, checks the code, and makes an account of the delegate's own that reads the artist's app inside the invited scope. A seeded invitation (Sam Okoro, lawyer, \"Licence requests\") is added to Mira's Delegates. home.tsx still says \"for sync approvals\" for any delegate (another builder's text). Accepting doesn't persist the invite's Active state across a reload, because DELEGATES isn't kept."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "17",
+    "asked": "Upgrade / re-verify as a visible action on a phone",
+    "frd": "S3-1",
+    "here": "A record action on Identity & verification: \"Upgrade to Verified + ID\", or \"Re-verify\". On a phone it folds into ⋮ (s3-artist #4). For a delegate it is left out, not greyed: PageAction has no unavailable (s3-artist #6)."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "18",
+    "asked": "A failed re-check for someone already Verified + ID",
+    "frd": "",
+    "here": "Decided: it is recorded and shown in an Alert, but never lowers a level. Whether a failed re-verification should suspend signing is a policy call."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "19",
+    "asked": "Reset the demo forgetting sign-ups",
+    "frd": "",
+    "here": "resetGraph doesn't know about this store. When a reset drops a claim's request, the sign-ups go with it, but an account with no claims survives a reset. \"Sign out\" in the New artist's account menu starts sign-up again."
+  },
+  {
+    "surface": "S3 sign-up and ArtistID",
+    "id": "20",
+    "asked": "Phone record disc and hidden tips on the sign-up",
+    "frd": "Mobile brief",
+    "here": "As in s3-artist #2: Identity's band draws the initials as a full-width disc. Tips are not drawn in one hand, so every sentence a phone reader needs is a help or an Alert."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "1",
+    "asked": "A notification slot in the top bar — a bell with an unread count, opening the latest notices in a panel",
+    "frd": "S4-4",
+    "here": "The shell has no such slot (ShellProduct has workspace, destinations, utilities, offRail, user, personas). Notifications are an off-rail section reached from the account menu, whose command carries the count in words: \"Notifications · 2 unread\"."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "2",
+    "asked": "A bell mark",
+    "frd": "S4-4",
+    "here": "Not in the 134 marks; REPORTED, not drawn. Nothing on the rail stands for notifications, which is why the section is off the rail and not a utility."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "3",
+    "asked": "An unread count on a nav entry",
+    "frd": "S4-4",
+    "here": "NavPage takes no count. The count rides the account command's label and the inbox's \"Unread\" reading."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "4",
+    "asked": "A notification feed — a list of notices with read/unread, kind and a way to the thing",
+    "frd": "S4-4",
+    "here": "invented says Notification → Toast/Alert, and Timeline → ActivityPanel. Neither fits: a toast passes and an alert stays on one page; ActivityPanel is one record's history of saves, with no read state and no link per entry. The inbox is a CollectionPage (readings Unread / Escalations / All, selection to mark read, a row opens the record and marks it read)."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "5",
+    "asked": "A read/unread state",
+    "frd": "S4-4",
+    "here": "No status family for it. Written as a word in a column, and as the opening reading. A notice family (Unread, Read) or a dot on the row is owed."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "6",
+    "asked": "A send state (Sent, Queued, Held by quiet hours, In digest)",
+    "frd": "S4-4",
+    "here": "No family; delivery is about releases and registration:Sent is a society's. The outbox writes the state as words (\"Sending, within five minutes\", \"Quiet hours until …\", \"Daily digest at …\")."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "7",
+    "asked": "A live toast when a notice arrives for the reader while they work",
+    "frd": "S4-4 \"notified within 5 minutes\"",
+    "here": "Toast is a component with no imperative API and no viewport placed by the shell; a page cannot raise one without composing markup. Not drawn."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "8",
+    "asked": "A time-of-day field for quiet hours",
+    "frd": "S4-4 (quiet hours)",
+    "here": "No as: \"time\" field. Quiet hours are a choice of two windows (22:00–07:00, 21:00–08:00) or Off."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "9",
+    "asked": "A switch bound to a settings draft for each channel",
+    "frd": "S4-4",
+    "here": "As gap B13: each channel is an On/Off choice."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "10",
+    "asked": "A non-control row in a settings group (push \"not available\" for a desk product)",
+    "frd": "S4-4",
+    "here": "SettingsRow holds a control; push for a desk product holds a Text \"Not available here\" with the reason as the description."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "11",
+    "asked": "A read-only fact beside a settings form (the organisation's escalation policy)",
+    "frd": "S4-5",
+    "here": "A FactCard after the SettingsForm inside the SettingsPage. The page's contract is \"a slot with a catalogue\"; whether a fact card belongs there is the system's call."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "12",
+    "asked": "An email preview — subject, body, from/to, as a reader would see the email",
+    "frd": "S4-4",
+    "here": "The message page is a DetailPage with a FactCard (to, address, channel, sent, says) and, for a digest, a TitledCard list of its notices. A long subject is cut in the record header (gap B16)."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "13",
+    "asked": "A page-level note on a CollectionPage saying where the clock stands",
+    "frd": "S4-5",
+    "here": "RecordIndex.note holds an Alert (\"Demo clock: Oct 27, 2026, 7 days ahead of Oct 20, 2026\"). It works; it is drawn inside the index, under the readings, not under the title."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "14",
+    "asked": "A page action unavailable with its reason (\"Mark all as read\" with nothing unread)",
+    "frd": "S4-4",
+    "here": "As gap B1: the action is left out when nothing is unread."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "15",
+    "asked": "Who acted on a conflict — updateConflict had no actor, so \"notify the OTHER party\" (S2-8) could not leave the mover out",
+    "frd": "S2-8",
+    "here": "updateConflict(id, change, by?) takes the acting party now. Call sites that don't pass it (the publisher's, the contributor's, the catalogue's) tell every party, the mover too. Passing it is a one-word change per call site, left to their owners."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "16",
+    "asked": "Notification preferences by kind (mute \"Request received\", keep escalations)",
+    "frd": "S4-4",
+    "here": "Not built: channels and digest apply to every kind. Escalations, licences paused/revoked and on-behalf notices never wait for a digest."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "17",
+    "asked": "A real person behind every party",
+    "frd": "S4-5",
+    "here": "Parties with nobody named in the prototypes (Halcyon, Ben Songs, Rhein, Lyra Labs, PRS…) are told as \"<Party> rights team\" at rights@<party>.example."
+  },
+  {
+    "surface": "S4 Notifications and escalation — gaps",
+    "id": "18",
+    "asked": "Escalation for things that are not requests — an open conflict nobody answers, a batch left in row errors",
+    "frd": "S4-5",
+    "here": "Only requests escalate (every one has a deadline). A conflict's response is a request (Conflict response), so that path is covered; a stale conflict with no request is not."
+  },
+  {
     "surface": "S5 Contributor portal — gaps",
     "id": "1",
     "asked": "Sureel's logo on Sureel's surfaces",
@@ -1713,5 +2063,145 @@
     "asked": "An address segment holding ow://…",
     "frd": "S8-4",
     "here": "the owAssetUri is encodeURIComponented into one segment and decoded on read; a bare id (9b2f-44c1-a7e0) or the transaction hash also finds it"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "1",
+    "asked": "A code block — a multi-line literal: a JSON response, a request body, a curl command that wraps",
+    "frd": "S9 (developer portal, S6-2)",
+    "here": "Code is an inline literal (inline-flex, leading-none), so it cannot hold a JSON document. The response is drawn as a RecordIndex of its fields — path, then the value in Code — and curl as one Code that wraps in a FactCard. A request body is edited in a longtext field. Proposed: Code gains a block axis (pre-wrapped, scrolls inside, copy in its trail), or a CodeBlock entry"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "2",
+    "asked": "An HTTP status as a state — 2xx / 4xx / 5xx at a glance, in a call log",
+    "frd": "S7 traffic, S6 explorer",
+    "here": "the status is text (200 OK) or Code; the log's readings split Answered / Refused. No family fits (feature, verification, trust mean other things). Proposed: a response family — Answered (success), Accepted (info), Refused (warn), Failed (danger)"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "3",
+    "asked": "A latency — milliseconds, and a percentile",
+    "frd": "S7 traffic; read-model targets (P95 < 400 ms)",
+    "here": "formatDuration writes seconds; latency is a count column named \"Latency, ms\" and P95 is a count with \"ms\" as its noun in an Alert's title. Proposed: as: \"latency\" (ms, two decimals) and a percentile figure for StatCardRow"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "4",
+    "asked": "A method chip — GET / POST beside a path",
+    "frd": "S6 explorer",
+    "here": "Code with the method; the path in Code, or as an identifier fact in the record's facts line, where it truncates mid-path (/v1/as…tive) — the long-value gap (gaps.md B16)"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "5",
+    "asked": "A request builder — parameters by where they go (path, query, header), a key picker, a body, sent from a dialog and answered on the page",
+    "frd": "S6-2 \"API reference, sandbox\"",
+    "here": "a FormDialog with one text field per parameter, the key as a choice (with \"No key\", to see the 401), the body as longtext; commit sends and opens the call's own address. Nothing marks a field as path / query / header but its help text"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "6",
+    "asked": "The API's wire values are read as a page's — ISO 8601 dates, a Merkle path, a $1 in a route pattern, an as narrowing an untrusted JSON body",
+    "frd": "",
+    "here": "check-page reads src/api/ as page code. Met without evasion: days go on the wire as Dates (UTC midnight of the graph's day, dayOnWire) and JSON writes them; untrusted bodies are read through fieldsOf rather than cast. A wire layer may want its own exemption, or the system its own formatWire"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "7",
+    "asked": "Keys for the parties that WRITE — a label through Revelator Pro, a publisher, a contributor",
+    "frd": "S9-1",
+    "here": "PARTNERS[].keys holds partner keys only, so HOLDER_KEYS lives in handlers.ts: hk_live_kestrel, hk_live_harbor, hk_live_meridian, with claims:write, clearances:write, attestations:write, links:write. No partner key carries any of these but provenance:write (Cadence) and registrations:write (GEMA, which may write society acknowledgements as assertions)"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "8",
+    "asked": "Key rotation reaching the API",
+    "frd": "S6-2",
+    "here": "the Partner portal rotates keys in its own state (partner/data.ts); the API reads PARTNERS[].keys, so a rotated-in key is answered 401 and the explorer offers the graph's keys, not the portal's"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "9",
+    "asked": "Sandbox keys answering the sandbox's test catalogue",
+    "frd": "S6-2",
+    "here": "a sandbox key (ck_sbx_…) reads the real graph here; the QZTST test codes are not served. The explorer offers the production key first"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "10",
+    "asked": "A home for provenance records",
+    "frd": "S9-1, data model \"Provenance records\"",
+    "here": "the model has no Provenance entity: RecordProvenance keeps them in PROVENANCE in handlers.ts and seals a GENESIS proof event; no surface reads them yet"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "11",
+    "asked": "Setters that return what they stored",
+    "frd": "",
+    "here": "addGrant and addAttestation return nothing; the API reads the new id back as GRANTS[0] / ATTESTATIONS[0]"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "12",
+    "asked": "A link's portion",
+    "frd": "S9-1 LinkRecordingWork",
+    "here": "linkRecording writes Full only; a Partial or medley-segment link is stored as Full and the item says so"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "13",
+    "asked": "An attestation flagged for want of authority",
+    "frd": "data model \"Authority\"",
+    "here": "Attestation has no flag: one made on someone's behalf without an agreement between the two naming the clause is stored Requested (asked of the person), not Signed"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "14",
+    "asked": "Held writes — an identifier that fails its format, an asset not found",
+    "frd": "Invariants: \"stored as invalid, not linked\"",
+    "here": "kept in HELD in handlers.ts (the graph has no unlinked-claim store), answered invalid / unmatched per item"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "15",
+    "asked": "Check digits",
+    "frd": "Invariants: identifier formats",
+    "here": "the fixtures' own ISWCs and UPCs FAIL their check digits (e.g. T-912.448.301-6 computes 8). So check digits are enforced on WRITES of codes the graph does not hold yet; a code it holds is read as held; look-ups check format only"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "16",
+    "asked": "Receipts the Verification portal knows",
+    "frd": "S8-1, S6-6",
+    "here": "the API mints its own CLEARANCE_RECEIPT events (from seq 890001, apart from the portal's); GET /v1/proof/events/{id} verifies them, but S8's page reads the shared log and the portal's receipts only, so an API receipt is not found at #/verify/<receipt>"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "17",
+    "asked": "Real hashes",
+    "frd": "Proof Log",
+    "here": "event hashes in the fixtures are invented, so a chain cannot be recomputed; /inclusion builds a real Merkle path over the batch with a stand-in hash (said in the payload), and the TSA token is illustrative"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "18",
+    "asked": "Webhook delivery",
+    "frd": "S9-7",
+    "here": "payloads are built and returned in the 202 (webhooks, confirmation) and kept for polling (GET /v1/commands/{id}); nothing is POSTed to the endpoints the Partner portal registers"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "19",
+    "asked": "Splits by right type when none is asked",
+    "frd": "S9-3",
+    "here": "collection depends on the right type (Rhein collects mechanical and performance only), so without right_type the answer gives owners and leaves collected_by null, saying why"
+  },
+  {
+    "surface": "S9 Graph APIs and feeds",
+    "id": "20",
+    "asked": "Bulk feeds — DDEX ERN / MWN, CWR in and acks out, SFTP",
+    "frd": "S9-6",
+    "here": "not built: the API takes JSON commands only. The contributor portal's batches stand for the feeds"
   }
 ]

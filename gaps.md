@@ -71,7 +71,8 @@ Fixed in the integration pass where marked ✓; the rest are open.
 | C7 | No home in the model for registrations, conflict evidence, counter-offers, suggested links, merge history, Merkle batches/TSA tokens, a claim reported only in a contributor's tenant | S2, S6, S7, S8 | open — held in surface `data.ts` |
 | C8 | Tier is per asset; the FRD's claim row wants it per claim | S1·T, S2 | open |
 | C9 | `RULE_VERSION` is a constant: publishing a rule in S7 doesn't change what the resolver reads | S7 | open |
-| C10 | No notification write — "both sides see the outcome" works only through shared state | S1, S2, S3, S7 | open |
+| C10 | No notification write — "both sides see the outcome" works only through shared state | S1, S2, S3, S7 | ✓ `graph/notify.ts` hears every setter (`GraphEvent`) and tells each party; kept with the graph (docs/gaps/s4-notifications.md) |
+| C11 | Every ISWC and UPC in the fixtures failed its own check digit | Files, S9 | ✓ recomputed; the API now checks check digits on every read and write |
 
 ## D. Policy calls the screens had to make (each built one way, flagged on the page)
 

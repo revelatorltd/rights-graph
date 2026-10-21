@@ -11,7 +11,7 @@ import {
   RecordIndex,
   TitledCard,
   UploaderDocument,
-  UploaderFileRow,
+  formatCount,
   formatList,
   formatMeta,
   formatPercent,
@@ -22,7 +22,8 @@ import { ASSERTIONS, CONFLICTS, assetById, partyName } from "../../graph/fixture
 import type { Assertion } from "../../graph/model";
 import { covers, shareTotals, standing, tierOf } from "../../graph/resolve";
 import { TerritoryChip, TierChip, partyMark } from "../../rights/kit";
-import { ackFiles, ackPending, registrationOf, registrations, sendAcknowledgements, type AckFile, type Registration } from "./data";
+import { ChosenRow, SampleFiles, choose, type Chosen } from "../../rights/file-parts";
+import { ackFiles, ackPending, readAcknowledgements, registrationOf, registrations, sendAcknowledgements, type AckAnswer, type AckFile, type Registration } from "./data";
 import { partnerHref, type PartnerPage, type Working } from "./working";
 
 const SOCIETY_TERRITORY = "DE";
@@ -44,23 +45,55 @@ const claimedIn = (workId: string) => shareTotals(workId, SOCIETY_TERRITORY).fin
 const conflictOn = (workId: string) => CONFLICTS.find((one) => one.assetId === workId && one.state !== "Resolved" && one.territories.includes(SOCIETY_TERRITORY));
 
 /**
- * An acknowledgement file sent (S6-8): the registrations it answers update, each share it
- * acknowledges is written to the graph as a claim, and where one disagrees with the graph a
- * conflict opens for Sureel ops. The prototype applies GEMA's next file in place of reading it.
+ * An acknowledgement file sent (S6-8), read here as the CWR it is: the registrations its ACK
+ * records answer update, each share it acknowledges is written to the graph as a claim, and where
+ * one disagrees with the graph a conflict opens for Sureel ops. What the file says is shown before
+ * it is sent — accepted, rejected, and works the graph has no registration for.
  */
 export function SendAcknowledgements(held: HeldBy) {
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<Chosen | null>(null);
+  const answers = file?.read?.format === "CWR" ? readAcknowledgements(file.read) : undefined;
+  const notCwr = file?.read && file.read.format !== "CWR" ? `This file reads as ${file.read.format}, not CWR.` : undefined;
+  const none = answers && !answers.length ? "The file holds no ACK record — it is a registration, not an acknowledgement." : undefined;
   return (
-    <FormDialog
-      {...held}
-      confirm="Send"
-      ready={() => file !== null}
-      onCommit={() => sendAcknowledgements(file!.name)}
-    >
-      <UploaderDocument multiple={false} noun={{ one: "acknowledgement file", many: "acknowledgement files" }} formats="CWR 2.1 to 3.1 ACK" accept=".cwr,.v21,.v22,.v30,.v31,.txt" onSelect={(files) => setFile(files[0] ?? null)}>
-        {file ? <UploaderFileRow name={file.name} fileSize={file.size} phase="landed" onRemove={() => setFile(null)} /> : null}
+    <FormDialog {...held} confirm="Send" onClose={() => setFile(null)} ready={() => Boolean(answers?.length)} onCommit={() => sendAcknowledgements(file!.name, answers!)}>
+      <UploaderDocument
+        multiple={false}
+        noun={{ one: "acknowledgement file", many: "acknowledgement files" }}
+        formats="CWR 2.1 to 3.1 ACK"
+        accept=".cwr,.v21,.v22,.v30,.v31,.txt"
+        onSelect={(files) => (files[0] ? void choose(files[0], setFile) : setFile(null))}
+      >
+        {file ? <ChosenRow chosen={file} onRemove={() => setFile(null)} /> : null}
       </UploaderDocument>
+      {notCwr || none ? (
+        <Alert intent="danger" title="Not an acknowledgement file">
+          {notCwr ?? none}
+        </Alert>
+      ) : null}
+      {answers?.length ? <AckSummary answers={answers} /> : null}
+      <SampleFiles samples={[{ name: "gema_cwr21_ack_sample.cwr", label: "Download a sample file" }]} />
     </FormDialog>
+  );
+}
+
+/** What the file answers, said before it is sent. */
+function AckSummary({ answers }: { answers: readonly AckAnswer[] }) {
+  const accepted = answers.filter((one) => one.workId && one.accepted);
+  const rejected = answers.filter((one) => one.workId && !one.accepted);
+  const unknown = answers.filter((one) => !one.workId);
+  return (
+    <Alert intent={unknown.length || rejected.length ? "warn" : "info"} title={formatCount(answers.length, { one: "acknowledgement", many: "acknowledgements" })}>
+      {[
+        accepted.length
+          ? `Accepted: ${formatList(accepted.map((one) => formatMeta([assetById(one.workId!).title, one.ack.societyNumber, one.share === undefined ? "" : `${formatPercent(one.share)} of the publisher side`].filter(Boolean)) ?? ""))}.`
+          : "",
+        rejected.length ? `Rejected: ${formatList(rejected.map((one) => formatMeta([assetById(one.workId!).title, ...one.ack.messages.map((message) => message.replace(/\.$/, ""))]) ?? ""))}.` : "",
+        unknown.length ? `Not registered with you in the graph, and left alone: ${formatList(unknown.map((one) => one.ack.work?.title || one.ack.title))}.` : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    </Alert>
   );
 }
 
@@ -202,6 +235,8 @@ export function Acknowledgements() {
           { name: "Status", value: () => "Matched", cell: () => <Badge status="batch:Matched" /> },
           { name: "Works", value: (one) => one.works.length, cell: (one) => formatList(one.works.map((id) => assetById(id).title)) },
           { name: "Mismatches", as: "count", value: (one) => one.mismatches.length },
+          { name: "Rejected", as: "count", value: (one) => one.rejected?.length ?? 0 },
+          { name: "Not in the graph", value: (one) => (one.unknown ?? []).join(" "), cell: (one: AckFile) => formatList(one.unknown ?? []) },
           {
             name: "Conflicts",
             value: (one) => one.conflicts.join(" "),

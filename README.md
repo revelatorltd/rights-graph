@@ -27,7 +27,7 @@ npm run dev          # http://localhost:5190 — start at the map
   beside the answer, never "edit the owner"; consent as the artist's front door; a disputed consent
   paused, not live; contributor trust by showing; ask-and-keep-a-receipt for partners; ops opening on
   ingestion health; verification without an account).
-- **Design system gaps** — all 245 logged rows, filterable by surface. The synthesis is
+- **Design system gaps** — all 315 logged rows, filterable by surface. The synthesis is
   [`gaps.md`](gaps.md).
 
 ## What is where
@@ -39,10 +39,13 @@ npm run dev          # http://localhost:5190 — start at the map
 | S2 Publisher workspace | `?persona=publisher#/pro/rights/overview` | Publisher (Harbor Music) | the same shell, switched by organisation |
 | S3 Artist app | `#/artist/home` (`?persona=writer`, `delegate`) | Mira Castellanos, Ana Lindgren, Dara Whitlock | the system's phone shape — view at 375 px |
 | S4 Approval inbox | `…/rights/requests` in S1, S2; `#/artist/requests` | anyone with something to approve | one request shape across three homes |
+| S4 Notifications | `…#/<surface>/notifications` (inbox, settings, outbox) in Pro, artist, contributor, partner, console; `#/console/notifications/escalation` (the demo clock) | everyone with a person | an off-rail section from the account menu |
+| S3 Sign-up and ID check | `?persona=new-artist#/artist/sign-up` | a new artist, writer, or an invited delegate | a Wizard over the shell; claims confirmed by the label (Pro requests) or Sureel (`#/console/identity`) |
 | S5 Contributor portal | `#/contributor/overview` | Meridian Music Group (a stand-in peer major) | Sureel product |
 | S6 Partner portal | `#/partner/overview` (`?persona=openwave-studios`, `gema`, `voxa-voice`, `tessellate`) | Cadence AI and others | Sureel product |
 | S7 Sureel Graph Console | `#/console/health` (`?persona=data-engineer`) | Lior Ben-Ami, Sureel rights ops | Sureel product, RCC's sibling |
 | S8 Verification portal | `#/verify/rcpt_7Q2M-9F4K-CD7A` | an auditor, no account | Sureel, public |
+| S9 Graph API | `curl http://localhost:5190/api/v1/…` · explorer `?persona=cadence-ai#/partner/api` · traffic `#/console/traffic` · `/api/openapi.json` | every system | the same handlers on the dev server (its own copy of the fixtures) and in the browser (the session graph) |
 
 The graph is `src/graph/`: `model.ts` (the ERD), `fixtures.ts` (invented data around the doc's
 worked example — Northbound, Ana, Ben, Harbor Music, Ben Songs, Rhein Edition — so the screens can
@@ -92,10 +95,33 @@ opens renders (41 checked on a fresh session). Two things to know when you demo:
 - **On a phone (375 px)**: no page scrolls sideways; the track record's facts line truncates and
   shows an inner scrollbar, and the readings on Registrations and Look-ups run past the edge.
 
+## Files, the API, notifications
+
+- **Files are read and saved for real.** CSV, JSON, DDEX ERN/MWN and CWR 2.1 are parsed in the
+  browser and checked against the graph's rules (ISRC, ISWC and UPC check digits, IPI, ISO 3166
+  territories, shares ≤ 100%, a start date); Parquet, PDF and zips are refused with a reason. Try
+  the files in `public/samples/` — each upload step links its own. Downloads save under real names
+  (`b-3201_failed_rows.csv`, `rcpt_7Q2M-9F4K-CD7A.json`, `kestrel-point_conflicts_gv-….csv`). The
+  two browser calls that save and print live in `platform/save.ts`, outside `src/`: the system has
+  no download command yet (gap B6), and its page check refuses a page that clicks a link itself.
+- **S9 answers over HTTP.** For example:
+  `curl 'http://localhost:5190/api/v1/assets/r-northbound/clearance/effective?use=AI%20training&partner=p-cadence' -H 'Authorization: Bearer ck_live_91d0'`
+  returns `needs_review` · `composition_not_cleared` with a receipt. Writes take an
+  `Idempotency-Key` and answer 202 with an event id; a key writes only its holder's claims, and an
+  attestation about someone else's subject is signed only on their behalf under an agreement.
+  `scripts/api-check.ts` runs 47 checks, the doc's worked example among them
+  (`../revelator-pro-design-system.git/node_modules/.bin/tsx scripts/api-check.ts`).
+- **Notifications and escalation.** Every write that should tell someone does — by email, push
+  (artist app) and in-app, with a digest option; nothing is really sent, and each product's outbox
+  shows what would have been. An unanswered request escalates the day after its deadline along its
+  organisation's chain; advance the demo clock from `#/console/notifications/escalation` or the
+  map's account menu. The clock runs ahead of the graph's date, so no clearance or term changes.
+
 ## Not built
 
-Push/email notifications and escalation timers (S4-4/5), the artist sign-up and ID check, real file
-reading and download (files are handed over as blob links), loading states (the fixtures are
-synchronous), and S9 as an API (the console and portals show what it carries). `../revelator-pro-app`
+Loading states (the fixtures are synchronous, and the system's page forms take no loading prop —
+next), real sending of email, push and sign-in codes, real camera capture for the ID check, a PDF
+file for the export (the browser's print dialog stands in), and posting webhooks to partners'
+endpoints (each write returns the payload it would send). `../revelator-pro-app`
 was not on this machine and its repository is private, so this is a sibling app; the published
 replica at revelator-il.github.io/revelator-pro-ui was the visual reference for the Pro shell.

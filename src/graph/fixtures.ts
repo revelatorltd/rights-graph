@@ -16,6 +16,8 @@ import type {
   Tenant,
   TerritorySet,
 } from "./model";
+// Types only: `notify.ts` reads the graph and hears its writes; the graph never runs it (no cycle).
+import type { Escalation, Notice, Prefs } from "./notify";
 
 /**
  * One graph, every surface reading it. Invented and hand-written, except the worked example the
@@ -89,13 +91,13 @@ const W = (id: string, title: string, iswc: string | undefined, revenue: number)
 export const ASSETS: Asset[] = [
   // Works
   W("w-northbound", "Northbound", undefined, 48200),
-  W("w-tidewater", "Tidewater", "T-912.448.301-6", 31750),
-  W("w-paper-moons", "Paper Moons", "T-912.448.377-2", 22400),
-  W("w-lowlight", "Lowlight", "T-913.002.118-4", 19120),
-  W("w-glass-coast", "Glass Coast", "T-913.002.164-9", 12880),
-  W("w-switchback", "Switchback", "T-913.117.402-1", 9340),
+  W("w-tidewater", "Tidewater", "T-912.448.301-8", 31750),
+  W("w-paper-moons", "Paper Moons", "T-912.448.377-8", 22400),
+  W("w-lowlight", "Lowlight", "T-913.002.118-0", 19120),
+  W("w-glass-coast", "Glass Coast", "T-913.002.164-6", 12880),
+  W("w-switchback", "Switchback", "T-913.117.402-2", 9340),
   W("w-ember", "Ember Season", undefined, 7210),
-  W("w-ferry", "Last Ferry Out", "T-914.556.010-0", 4980),
+  W("w-ferry", "Last Ferry Out", "T-914.556.010-7", 4980),
 
   // Recordings — Kestrel's catalogue
   {
@@ -283,11 +285,11 @@ export const ASSETS: Asset[] = [
   },
 
   // Releases — package assets, never hold rights.
-  { id: "rel-northbound", kind: "Release", title: "Northbound", artist: "Mira Castellanos", upc: "5063217409918", revenue: 0, labelId: "p-kestrel", items: ["r-northbound", "r-tidewater", "r-paper-moons"], released: day(2024, 4, 12), cover: 3 },
-  { id: "rel-lowlight", kind: "Release", title: "Lowlight", artist: "Tobi Renn", upc: "5063217411300", revenue: 0, labelId: "p-kestrel", items: ["r-lowlight", "r-glass-coast"], released: day(2025, 2, 21), cover: 7 },
-  { id: "rel-switchback", kind: "Release", title: "Switchback", artist: "Juno Hale", upc: "5063217412847", revenue: 0, labelId: "p-kestrel", items: ["r-switchback", "r-ember"], released: day(2025, 6, 6), cover: 11 },
-  { id: "rel-ferry", kind: "Release", title: "Last Ferry Out", artist: "Mira Castellanos", upc: "5063217414001", revenue: 0, labelId: "p-kestrel", items: ["r-ferry", "r-tidewater-remix"], released: day(2026, 1, 30), cover: 15 },
-  { id: "rel-harbour-lights", kind: "Release", title: "Harbour Lights", artist: "Mira Castellanos", upc: "5063217415923", revenue: 0, labelId: "p-kestrel", items: ["r-harbour-lights"], released: day(2026, 10, 30), cover: 19 },
+  { id: "rel-northbound", kind: "Release", title: "Northbound", artist: "Mira Castellanos", upc: "5063217409917", revenue: 0, labelId: "p-kestrel", items: ["r-northbound", "r-tidewater", "r-paper-moons"], released: day(2024, 4, 12), cover: 3 },
+  { id: "rel-lowlight", kind: "Release", title: "Lowlight", artist: "Tobi Renn", upc: "5063217411309", revenue: 0, labelId: "p-kestrel", items: ["r-lowlight", "r-glass-coast"], released: day(2025, 2, 21), cover: 7 },
+  { id: "rel-switchback", kind: "Release", title: "Switchback", artist: "Juno Hale", upc: "5063217412849", revenue: 0, labelId: "p-kestrel", items: ["r-switchback", "r-ember"], released: day(2025, 6, 6), cover: 11 },
+  { id: "rel-ferry", kind: "Release", title: "Last Ferry Out", artist: "Mira Castellanos", upc: "5063217414003", revenue: 0, labelId: "p-kestrel", items: ["r-ferry", "r-tidewater-remix"], released: day(2026, 1, 30), cover: 15 },
+  { id: "rel-harbour-lights", kind: "Release", title: "Harbour Lights", artist: "Mira Castellanos", upc: "5063217415925", revenue: 0, labelId: "p-kestrel", items: ["r-harbour-lights"], released: day(2026, 10, 30), cover: 19 },
 ];
 
 export const assetById = (id: string) => ASSETS.find((one) => one.id === id)!;
@@ -541,7 +543,7 @@ export let BATCHES: Batch[] = [
 /** The row errors on a batch that failed validation. */
 export const ROW_ERRORS: readonly { row: number; field: string; value: string; problem: string }[] = [
   { row: 118, field: "ISRC", value: "USMM1240091", problem: "11 characters; an ISRC has 12" },
-  { row: 431, field: "ISWC", value: "T-034.524.680-2", problem: "Check digit does not match" },
+  { row: 431, field: "ISWC", value: "T-034.524.680-1", problem: "Check digit does not match" },
   { row: 902, field: "Territory", value: "EU", problem: "Not an ISO 3166 or CISAC TIS code" },
   { row: 1207, field: "Share", value: "105", problem: "Publisher shares on the row sum to 105%" },
   { row: 3388, field: "IPI", value: "52341887", problem: "IPI name numbers have 11 digits" },
@@ -552,7 +554,7 @@ export const ROW_ERRORS: readonly { row: number; field: string; value: string; p
 /** A non-standard file's headers, and where mapping thinks each goes (S5-9). */
 export const MAPPING: readonly { header: string; sample: string; target?: string; confidence?: number; state: "Unmatched" | "Suggested" | "Completed" }[] = [
   { header: "Song Title", sample: "Copperline", target: "Work title", state: "Completed" },
-  { header: "ISWC Code", sample: "T-918.211.004-7", target: "ISWC", state: "Completed" },
+  { header: "ISWC Code", sample: "T-918.211.004-9", target: "ISWC", state: "Completed" },
   { header: "Writer 1", sample: "R. Avila", target: "Writer name", state: "Completed" },
   { header: "W1 IPI", sample: "00618822304", target: "Writer IPI", confidence: 0.97, state: "Suggested" },
   { header: "W1 %", sample: "33.33", target: "Writer share", confidence: 0.94, state: "Suggested" },
@@ -656,8 +658,8 @@ export const MERGES: readonly {
   state: "Suggested" | "Matched" | "Unmatched";
 }[] = [
   { id: "m-1", kind: "Party", left: { name: "Ana Lindgren", ids: ["IPI 00734410925"], source: "Harbor Music · AGR-101", detail: "Co-writes with Ben Okafor" }, right: { name: "A. Lindgren", ids: ["ISNI 0000000468213309"], source: "Kestrel Point · DDEX ERN credits", detail: "Background vocals on Northbound" }, shared: ["Same ISNI on the ArtistID", "Co-writer Ben Okafor on both"], confidence: 0.88, method: "Name + co-writer graph", revenue: 96400, state: "Suggested" },
-  { id: "m-2", kind: "Recording link", left: { name: "Switchback — Juno Hale", ids: ["ISRC GBKPR2500311"], source: "Kestrel Point · Revelator Pro", detail: "Earning, no work link" }, right: { name: "Switchback", ids: ["ISWC T-913.117.402-1"], source: "Silverbirch · CWR ack PRS", detail: "Writers J. Hale, P. Ndiaye" }, shared: ["Title exact", "Writer J. Hale is the performer"], confidence: 0.83, method: "Title + performer-writer", revenue: 33900, state: "Suggested" },
-  { id: "m-3", kind: "Work", left: { name: "Tidewater", ids: ["ISWC T-912.448.301-6"], source: "Harbor Music · AGR-101", detail: "Writer Ana Lindgren 100%" }, right: { name: "Tide Water", ids: ["MMG-PUB-118204"], source: "Meridian Music Group upload", detail: "Writers A. Lindgren 75%, K. Moreau 50%" }, shared: ["Writer Ana Lindgren", "Same lyric fingerprint"], confidence: 0.79, method: "Lyric fingerprint", revenue: 61300, state: "Suggested" },
+  { id: "m-2", kind: "Recording link", left: { name: "Switchback — Juno Hale", ids: ["ISRC GBKPR2500311"], source: "Kestrel Point · Revelator Pro", detail: "Earning, no work link" }, right: { name: "Switchback", ids: ["ISWC T-913.117.402-2"], source: "Silverbirch · CWR ack PRS", detail: "Writers J. Hale, P. Ndiaye" }, shared: ["Title exact", "Writer J. Hale is the performer"], confidence: 0.83, method: "Title + performer-writer", revenue: 33900, state: "Suggested" },
+  { id: "m-3", kind: "Work", left: { name: "Tidewater", ids: ["ISWC T-912.448.301-8"], source: "Harbor Music · AGR-101", detail: "Writer Ana Lindgren 100%" }, right: { name: "Tide Water", ids: ["MMG-PUB-118204"], source: "Meridian Music Group upload", detail: "Writers A. Lindgren 75%, K. Moreau 50%" }, shared: ["Writer Ana Lindgren", "Same lyric fingerprint"], confidence: 0.79, method: "Lyric fingerprint", revenue: 61300, state: "Suggested" },
   { id: "m-4", kind: "Party", left: { name: "Tobi Renn", ids: ["ISNI 0000000511820034"], source: "Kestrel Point", detail: "Main artist, Lowlight" }, right: { name: "Tobias Renn", ids: ["IPI 00811203376"], source: "Meridian Music Group upload", detail: "Writer on 14 works" }, shared: ["Country Germany", "No shared co-writers"], confidence: 0.61, method: "Name similarity", revenue: 44100, state: "Suggested" },
 ];
 
@@ -678,6 +680,77 @@ export const CLAIMANTS: readonly { party: string; submitted: number; rejected: n
 ];
 
 // ---------------------------------------------------------------------------------------------
+// Notifications (S4-4, S4-5) — what each person was told, by which channel and when, and the
+// items that went up to the next role. Kept with the graph so a notice survives a crossing into
+// another product. WHO is told WHAT is `notify.ts`'s; it hears every write below.
+
+/** A notice as the seeds write it: in-app at once, push a minute later, email two (S4-4: within five). */
+const seeded = (
+  id: string,
+  to: string,
+  kind: Notice["kind"],
+  about: Notice["about"],
+  title: string,
+  body: string,
+  when: Date,
+  by: { push?: boolean; email?: boolean | "Daily"; read?: boolean } = {},
+): Notice => ({
+  id,
+  to,
+  kind,
+  about,
+  title,
+  body,
+  at: when,
+  read: by.read ?? true,
+  sent: {
+    "In-app": when,
+    ...(by.push ? { Push: new Date(when.getTime() + 60_000) } : {}),
+    ...(by.email === false ? {} : by.email === "Daily" ? { Email: new Date(when.getFullYear(), when.getMonth(), when.getDate() + 1, 8) } : { Email: new Date(when.getTime() + 120_000) }),
+  },
+  ...(by.email === "Daily" ? { digest: "Daily" as const } : {}),
+});
+
+export let NOTICES: Notice[] = [
+  seeded("n-1", "u-elena", "Request received", { kind: "Request", id: "rq-2208" }, "New request: Sync for Openwave Studios", "Northbound — Harbor Music's 50% · Only GB · answer by Oct 30, 2026.", at(2026, 10, 20, 8, 15), { email: "Daily", read: false }),
+  seeded("n-2", "u-mira", "Credit to confirm", { kind: "Request", id: "rq-2211" }, "Confirm your credit on Harbour Lights", "Kestrel Point Recordings credits you as Main artist · answer by Oct 30, 2026.", at(2026, 10, 19, 17, 20), { push: true, read: false }),
+  seeded("n-3", "u-mira", "Request received", { kind: "Request", id: "rq-2215" }, "New request: Voice/NIL for Tessellate", "Mira Castellanos · Only DE, AT, CH · answer by Oct 28, 2026.", at(2026, 10, 19, 10), { push: true, read: false }),
+  seeded("n-4", "u-priya", "Request received", { kind: "Request", id: "rq-2204" }, "New request: Sync for Openwave Studios", "Switchback (Live at Fieldhouse) · Only US · answer by Oct 24, 2026.", at(2026, 10, 19, 16, 5), { read: false }),
+  seeded("n-5", "u-priya", "Request received", { kind: "Request", id: "rq-2201" }, "New request: AI training for Tessellate", "Kestrel Point catalogue · World · answer by Oct 27, 2026.", at(2026, 10, 18, 9, 30), { read: false }),
+  seeded("n-6", "u-mira", "Approved on your behalf", { kind: "Request", id: "rq-2213" }, "Dara Whitlock approved Sync on Northbound (Official Video) for you", "Under Delegate scope: sync approvals · Only US.", at(2026, 10, 18, 12, 40), { push: true }),
+  seeded("n-7", "u-andre", "Licence paused", { kind: "Grant", id: "g-14" }, "Licence paused: Voice/NIL on Mira Castellanos", "The artist disputed the attestation it rests on. Paused pending Sureel's review, not revoked — don't use it until it resumes.", at(2026, 10, 14, 9, 12)),
+  seeded("n-8", "u-priya", "Attestation disputed", { kind: "Conflict", id: "cf-6" }, "Mira Castellanos disputed your Voice/NIL attestation", "You attested under AGR-310 §7.4 on her behalf. The grant to Voxa Voice is paused; Sureel ops reviews both claims.", at(2026, 10, 14, 9, 11)),
+  seeded("n-9", "u-noor", "Dispute opened", { kind: "Conflict", id: "cf-6" }, "Dispute opened: Attestation dispute on Northbound", "Kestrel Point Recordings and Mira Castellanos · High · in your queue.", at(2026, 10, 14, 9, 11)),
+  seeded("n-10", "u-mira", "Dispute opened", { kind: "Conflict", id: "cf-6" }, "Your dispute is open", "The Voice/NIL grant to Voxa Voice is paused, not revoked, while Sureel reviews it. You'll hear the outcome here.", at(2026, 10, 14, 9, 11), { push: true }),
+  seeded("n-11", "u-mira", "Attested on your behalf", { kind: "Request", id: "rq-2203" }, "Kestrel Point Recordings approved Voice/NIL for Voxa Voice on your behalf", "Under AGR-310 §7.4. You can view it, and dispute it: a dispute opens a conflict, it doesn't silently revoke.", at(2026, 10, 12, 15, 2), { push: true }),
+  seeded("n-12", "u-andre", "Request decided", { kind: "Request", id: "rq-2203" }, "Kestrel Point Recordings approved your Voice/NIL request", "Priya Raman · for Mira Castellanos · under AGR-310 §7.4.", at(2026, 10, 12, 15, 2)),
+  seeded("n-13", "u-tobi", "Escalated", { kind: "Request", id: "rq-2212" }, "Your AI opt-out signature went to Kestrel Point's label admin", "Unanswered past its deadline of Oct 15, 2026, it moved to Priya Raman. You can still sign it.", at(2026, 10, 16, 0, 5), { push: true }),
+  seeded("n-14", "u-priya", "Escalated to you", { kind: "Request", id: "rq-2212" }, "Escalated to you: AI opt-out signature from Tobi Renn", "Tobi Renn (Artist) hasn't answered since Sep 15, 2026; the deadline was Oct 15, 2026.", at(2026, 10, 16, 0, 5)),
+  seeded("n-15", "u-priya", "Escalated", { kind: "Request", id: "rq-2205" }, "AI streaming for Lyra Labs went to Revelator support", "Unanswered past its deadline of Oct 12, 2026. It is still yours: answer it and support stands down.", at(2026, 10, 13, 0, 5)),
+  seeded("n-16", "u-support", "Escalated to you", { kind: "Request", id: "rq-2205" }, "Escalated to you: AI streaming for Lyra Labs, at Kestrel Point Recordings", "Priya Raman (Label admin) hasn't answered since Oct 2, 2026; the deadline was Oct 12, 2026.", at(2026, 10, 13, 0, 5)),
+  seeded("n-17", "u-maya", "Request decided", { kind: "Request", id: "rq-2207" }, "Silverbirch Publishing House approved your AI training request", "Composition side · Owen Brightwater · for Silverbirch Publishing House.", at(2026, 10, 8, 16, 40)),
+  seeded("n-18", "u-dana", "Conflict opened", { kind: "Conflict", id: "cf-8" }, "Conflict opened: Overclaim on Tidewater", "Your upload claims 125% across eight territories with Harbor Music. Paying on the signed agreement until resolved.", at(2026, 10, 6, 6), { email: "Daily" }),
+  seeded("n-19", "u-maya", "Request auto-cleared", { kind: "Request", id: "rq-2202" }, "Auto-cleared: AI training on the Kestrel Point catalogue", "A standing grant cleared the master side. Nothing to wait for on it.", at(2026, 10, 3, 14, 1)),
+  seeded("n-20", "u-elena", "Request received", { kind: "Request", id: "rq-2206" }, "New request: AI training for Cadence AI", "Works on Kestrel Point recordings · World · answer by Oct 24, 2026.", at(2026, 10, 3, 14), { email: "Daily" }),
+];
+
+/** Items that went up to the next role — the seeded two, both past their deadline (S4-5). */
+export let ESCALATIONS: Escalation[] = [
+  { id: "es-1", request: "rq-2205", level: 1, from: "u-priya", to: "u-support", at: at(2026, 10, 13, 0, 5) },
+  { id: "es-2", request: "rq-2212", level: 1, from: "u-tobi", to: "u-priya", at: at(2026, 10, 16, 0, 5) },
+];
+
+/** What each person chose, over the defaults `notify.ts` gives everyone. */
+export let PREFS: Record<string, Partial<Prefs>> = {
+  "u-elena": { digest: "Daily" },
+  "u-dana": { digest: "Daily" },
+  "u-mira": { quiet: "22:00–07:00" },
+};
+
+/** Days the demo clock is run ahead of `TODAY` — what makes an unanswered item escalate (S4-5). */
+export let CLOCK_DAYS = 0;
+
+// ---------------------------------------------------------------------------------------------
 // Writes — every surface reads the graph as it now is. Kept for the browser session, so a flow
 // that crosses surfaces (a link into another product reloads the page) carries what it wrote.
 
@@ -696,17 +769,57 @@ export function wrote() {
   for (const listener of listeners) listener();
 }
 
+/**
+ * What a write changed, as whoever must hear of it reads it — `notify.ts` turns these into notices.
+ * `by` is the party that acted, where the setter was told; without it, every party is told.
+ */
+export type GraphEvent =
+  | { kind: "request.added"; after: Request }
+  | { kind: "request.state"; before: Request; after: Request }
+  | { kind: "credit.state"; before: Credit; after: Credit }
+  | { kind: "grant.state"; before: Grant; after: Grant }
+  | { kind: "attestation.added"; after: Attestation }
+  | { kind: "attestation.state"; before: Attestation; after: Attestation }
+  | { kind: "conflict.added"; after: Conflict }
+  | { kind: "conflict.updated"; before: Conflict; after: Conflict; by?: string }
+  | { kind: "sharing"; tenant: string; field: string; before: Tenant["sharing"][number]["level"]; after: Tenant["sharing"][number]["level"]; by?: string }
+  | { kind: "batch.state"; before: Batch; after: Batch };
+
+type Hearer = (event: GraphEvent) => void;
+const hearers = new Set<Hearer>();
+/** Hears every write the setters below make, after it is made and before the pages draw. */
+export const hear = (hearer: Hearer) => {
+  hearers.add(hearer);
+  return () => hearers.delete(hearer);
+};
+function heard(event: GraphEvent) {
+  for (const hearer of hearers) hearer(event);
+}
+
 const KEPT = "rights-graph:graph";
 /** A date written into the session comes back as a date. */
 const revive = (_: string, value: unknown) =>
   typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value) ? new Date(value) : value;
 
+const kept = (): Kept => ({
+  ASSETS,
+  ASSERTIONS,
+  GRANTS,
+  CREDITS,
+  ATTESTATIONS,
+  CONFLICTS,
+  REQUESTS,
+  TENANTS,
+  BATCHES,
+  NOTICES,
+  ESCALATIONS,
+  PREFS,
+  CLOCK_DAYS,
+});
+
 function save() {
   try {
-    sessionStorage.setItem(
-      KEPT,
-      JSON.stringify({ ASSETS, ASSERTIONS, GRANTS, CREDITS, ATTESTATIONS, CONFLICTS, REQUESTS, TENANTS, BATCHES }),
-    );
+    sessionStorage.setItem(KEPT, JSON.stringify(kept()));
   } catch {
     // No session storage (a private window, a blocked site): the writes last until the page reloads.
   }
@@ -722,10 +835,14 @@ type Kept = {
   REQUESTS: Request[];
   TENANTS: Tenant[];
   BATCHES: Batch[];
+  NOTICES: Notice[];
+  ESCALATIONS: Escalation[];
+  PREFS: Record<string, Partial<Prefs>>;
+  CLOCK_DAYS: number;
 };
 
 /** The graph laid over the sets above — the session's, or the fixtures' own. */
-function lay(graph: Kept) {
+function lay(graph: Partial<Kept> & Omit<Kept, "NOTICES" | "ESCALATIONS" | "PREFS" | "CLOCK_DAYS">) {
   ASSETS.splice(0, ASSETS.length, ...graph.ASSETS);
   ASSERTIONS = graph.ASSERTIONS;
   GRANTS = graph.GRANTS;
@@ -735,15 +852,20 @@ function lay(graph: Kept) {
   REQUESTS = graph.REQUESTS;
   TENANTS = graph.TENANTS;
   BATCHES = graph.BATCHES;
+  // A session written before notices were kept carries none: it keeps the seeds.
+  NOTICES = graph.NOTICES ?? structuredClone(FIXTURES!.NOTICES);
+  ESCALATIONS = graph.ESCALATIONS ?? structuredClone(FIXTURES!.ESCALATIONS);
+  PREFS = graph.PREFS ?? structuredClone(FIXTURES!.PREFS);
+  CLOCK_DAYS = graph.CLOCK_DAYS ?? 0;
 }
 
 let FIXTURES: Kept | undefined;
 
 function restore() {
-  FIXTURES = structuredClone({ ASSETS, ASSERTIONS, GRANTS, CREDITS, ATTESTATIONS, CONFLICTS, REQUESTS, TENANTS, BATCHES });
+  FIXTURES = structuredClone(kept());
   try {
-    const kept = sessionStorage.getItem(KEPT);
-    if (kept) lay(JSON.parse(kept, revive) as Kept);
+    const session = sessionStorage.getItem(KEPT);
+    if (session) lay(JSON.parse(session, revive) as Kept);
   } catch {
     // A session written by an older build, or none at all: the graph starts from its fixtures.
   }
@@ -759,11 +881,17 @@ export function resetGraph() {
 }
 
 export function setRequestState(id: string, state: Request["state"], decided?: Request["decided"]) {
+  const before = REQUESTS.find((one) => one.id === id);
   REQUESTS = REQUESTS.map((one) => (one.id === id ? { ...one, state, decided } : one));
+  const after = REQUESTS.find((one) => one.id === id);
+  if (before && after) heard({ kind: "request.state", before, after });
   wrote();
 }
 export function setCreditState(id: string, state: Credit["state"]) {
+  const before = CREDITS.find((one) => one.id === id);
   CREDITS = CREDITS.map((one) => (one.id === id ? { ...one, state } : one));
+  const after = CREDITS.find((one) => one.id === id);
+  if (before && after) heard({ kind: "credit.state", before, after });
   wrote();
 }
 export function addGrant(grant: Omit<Grant, "id">) {
@@ -771,7 +899,10 @@ export function addGrant(grant: Omit<Grant, "id">) {
   wrote();
 }
 export function setGrantState(id: string, state: Grant["state"]) {
+  const before = GRANTS.find((one) => one.id === id);
   GRANTS = GRANTS.map((one) => (one.id === id ? { ...one, state } : one));
+  const after = GRANTS.find((one) => one.id === id);
+  if (before && after) heard({ kind: "grant.state", before, after });
   wrote();
 }
 export function addAssertion(claim: Omit<Assertion, "id" | "known">) {
@@ -801,14 +932,20 @@ export function addRequest(request: Omit<Request, "id">) {
   const next = REQUESTS.reduce((most, one) => Math.max(most, Number(one.id.replace("rq-", "")) || 0), 0) + 1;
   const id = `rq-${next}`;
   REQUESTS = [{ ...request, id }, ...REQUESTS];
+  heard({ kind: "request.added", after: REQUESTS[0]! });
   wrote();
   return id;
 }
-/** A contributor tenant's sharing level for one field (S5-5, S7-8). */
-export function setSharing(tenantId: string, field: string, level: Tenant["sharing"][number]["level"]) {
+/**
+ * A contributor tenant's sharing level for one field (S5-5, S7-8). `by` names whoever changed it
+ * where it was not the tenant itself — Sureel ops — so the contributor is told (S7-8).
+ */
+export function setSharing(tenantId: string, field: string, level: Tenant["sharing"][number]["level"], by?: string) {
+  const before = TENANTS.find((one) => one.id === tenantId)?.sharing.find((each) => each.field === field)?.level;
   TENANTS = TENANTS.map((one) =>
     one.id === tenantId ? { ...one, sharing: one.sharing.map((each) => (each.field === field ? { ...each, level } : each)) } : one,
   );
+  if (before && before !== level) heard({ kind: "sharing", tenant: tenantId, field, before, after: level, by });
   wrote();
 }
 /** A read of a tenant's data, logged at the top of its access log (S5-6). */
@@ -816,21 +953,30 @@ export function addAccess(tenantId: string, entry: Tenant["access"][number]) {
   TENANTS = TENANTS.map((one) => (one.id === tenantId ? { ...one, access: [entry, ...one.access] } : one));
   wrote();
 }
-export function updateConflict(id: string, change: Partial<Conflict>) {
+/** A conflict moved on. `by` is the party that moved it, where the caller says — it is not told its own move. */
+export function updateConflict(id: string, change: Partial<Conflict>, by?: string) {
+  const before = CONFLICTS.find((one) => one.id === id);
   CONFLICTS = CONFLICTS.map((one) => (one.id === id ? { ...one, ...change } : one));
+  const after = CONFLICTS.find((one) => one.id === id);
+  if (before && after) heard({ kind: "conflict.updated", before, after, by });
   wrote();
 }
 export function setAttestationState(id: string, state: Attestation["state"]) {
+  const before = ATTESTATIONS.find((one) => one.id === id);
   ATTESTATIONS = ATTESTATIONS.map((one) => (one.id === id ? { ...one, state } : one));
+  const after = ATTESTATIONS.find((one) => one.id === id);
+  if (before && after) heard({ kind: "attestation.state", before, after });
   wrote();
 }
 export function addAttestation(attestation: Omit<Attestation, "id">) {
   ATTESTATIONS = [{ ...attestation, id: `at-${ATTESTATIONS.length + 100}` }, ...ATTESTATIONS];
+  heard({ kind: "attestation.added", after: ATTESTATIONS[0]! });
   wrote();
 }
 export function addConflict(conflict: Omit<Conflict, "id">) {
   const id = `cf-${CONFLICTS.length + 100}`;
   CONFLICTS = [{ ...conflict, id }, ...CONFLICTS];
+  heard({ kind: "conflict.added", after: CONFLICTS[0]! });
   wrote();
   return id;
 }
@@ -850,11 +996,43 @@ export function setDelivered(assetId: string) {
   wrote();
 }
 export function setBatchState(id: string, change: Partial<Batch>) {
+  const before = BATCHES.find((one) => one.id === id);
   BATCHES = BATCHES.map((one) => (one.id === id ? { ...one, ...change } : one));
+  const after = BATCHES.find((one) => one.id === id);
+  if (before && after) heard({ kind: "batch.state", before, after });
   wrote();
 }
 export function addBatch(batch: Batch) {
   BATCHES = [batch, ...BATCHES];
+  wrote();
+}
+
+// Notifications — written by `notify.ts` as it hears the writes above, and by the person reading them.
+
+/**
+ * Notices handed out while a write is being heard — the write's own `wrote()` keeps them, so a
+ * setter and the notices it caused are saved and drawn as one.
+ */
+export function noted(notices: readonly Notice[]) {
+  NOTICES = [...notices, ...NOTICES];
+}
+/** An item gone up to the next role; the request's own state is the caller's to set. */
+export function addEscalation(escalation: Escalation) {
+  ESCALATIONS = [escalation, ...ESCALATIONS];
+}
+/** Read, or unread again, by the person they were for. */
+export function setNoticesRead(ids: readonly string[], read: boolean) {
+  NOTICES = NOTICES.map((one) => (ids.includes(one.id) ? { ...one, read } : one));
+  wrote();
+}
+/** What one person chose: channels, digest, quiet hours. */
+export function setPrefs(person: string, prefs: Partial<Prefs>) {
+  PREFS = { ...PREFS, [person]: { ...PREFS[person], ...prefs } };
+  wrote();
+}
+/** The demo clock, run ahead of `TODAY` by so many days (never behind it). */
+export function setClockDays(days: number) {
+  CLOCK_DAYS = Math.max(0, days);
   wrote();
 }
 

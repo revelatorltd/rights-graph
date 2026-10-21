@@ -10,6 +10,7 @@ import {
   unanswered,
   type HeldBy,
 } from "@revelator/pro-ui";
+import { keepEvidence } from "../../../rights/files";
 
 import { AGREEMENTS, TODAY, works } from "../../../graph/fixtures";
 import type { Assertion, Interest, RightType } from "../../../graph/model";
@@ -71,7 +72,8 @@ export function AddWorkClaim({ workId, correcting, ...held }: HeldBy & { workId?
           from: draft.from,
           to: draft.to ?? undefined,
           agreementId: draft.agreement === NO_AGREEMENT ? undefined : draft.agreement,
-          evidence: files.map((one) => one.name),
+          // Kept as evidence: the file's name goes on the claim, its size and type beside it.
+          evidence: keepEvidence(files),
           supersedes: correcting?.id,
         });
         setFiles([]);

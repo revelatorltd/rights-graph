@@ -27,9 +27,11 @@ import {
   TitledCard,
   formatDate,
   formatList,
+  formatBytes,
   formatMeta,
   formatPercent,
 } from "@revelator/pro-ui";
+import { evidenceFacts } from "../../../rights/files";
 
 import { ASSERTIONS, TODAY, agreementById, assetById, partyName } from "../../../graph/fixtures";
 import type { Assertion, Asset } from "../../../graph/model";
@@ -421,11 +423,15 @@ function ClaimDrawer({
               <TitledCard title="Evidence" count={claim.evidence?.length ?? 0}>
                 {claim.evidence?.length ? (
                   <Slot layout="list">
-                    {claim.evidence.map((one) => (
-                      <SlotItem key={one}>
-                        <Text kind="title">{one}</Text>
-                      </SlotItem>
-                    ))}
+                    {claim.evidence.map((one) => {
+                      // The file's facts, where it was filed here: its size and type travel with its name.
+                      const facts = evidenceFacts(one);
+                      return (
+                        <SlotItem key={one} trail={facts ? <Text kind="body" ink="secondary">{formatMeta([formatBytes(facts.size), facts.format === "Unknown" ? facts.type : facts.format])}</Text> : undefined}>
+                          <Text kind="title">{one}</Text>
+                        </SlotItem>
+                      );
+                    })}
                   </Slot>
                 ) : (
                   <Slot layout="empty">

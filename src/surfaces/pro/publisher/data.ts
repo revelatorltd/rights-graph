@@ -609,7 +609,7 @@ export function fileEvidence(conflict: Conflict, item: Omit<Evidence, "key" | "c
   EVIDENCE = [...EVIDENCE, { ...item, key: `ev-${EVIDENCE.length + 1}`, conflictId: conflict.id, by: ME, at: now() }];
   const mine = conflict.claims.find((id) => ASSERTIONS.find((one) => one.id === id)?.partyId === ME);
   if (mine) addEvidence(mine, evidenceName(item));
-  updateConflict(conflict.id, { step: Math.max(conflict.step, 2), state: "Open" });
+  updateConflict(conflict.id, { step: Math.max(conflict.step, 2), state: "Open" }, "p-harbor");
 }
 
 /** The claims a conflict counts, the graph's own first — superseded ones are kept, and say so. */
@@ -710,7 +710,7 @@ export function withdrawClaim(claim: Assertion) {
         state: "Resolved",
         step: 3,
         resolution: { ...decidedNow(), reason: `${MY_NAME} withdrew its ${formatPercent(claim.share)} claim (${claim.sourceRef}).` },
-      });
+      }, "p-harbor");
   }
 }
 
@@ -727,7 +727,7 @@ export function acceptIn(conflictId: string, codes: readonly string[]) {
     ...(everywhere
       ? { state: "Resolved" as const, step: 3, resolution: { ...decidedNow(), reason: `${MY_NAME} accepted the current state in every territory.` } }
       : {}),
-  });
+  }, "p-harbor");
 }
 
 /** Words read as one value, joined the way every meta line is — never by hand. */

@@ -2,7 +2,7 @@ import { TODAY, partyName } from "../../graph/fixtures";
 import { GRAPH_VERSION, RULE_VERSION } from "../../graph/resolve";
 import type { Use } from "../../graph/model";
 import { opaqueOf, proofOf, territoryName, type Snapshot } from "./data";
-import { download } from "./working";
+import { downloadReceiptFile } from "../../rights/files";
 
 /**
  * A signed receipt, as the partner keeps it (S6-6): the answer it was given, the reasons per side,
@@ -12,28 +12,33 @@ import { download } from "./working";
  */
 export function downloadReceipt(receipt: string, given: { assetId: string; use: Use; country: string; asked: Date; answer: Snapshot; partner: string }) {
   const event = proofOf(receipt);
-  download(`${receipt}.json`, {
-    receipt,
-    issuedTo: partyName(given.partner),
-    subject: opaqueOf(given.assetId),
-    use: given.use,
-    territory: territoryName(given.country),
-    askedAt: given.asked,
-    answer: given.answer,
-    resolver: { rule: RULE_VERSION, graph: GRAPH_VERSION },
-    proof: event
-      ? {
-          event: event.seq,
-          type: event.type,
-          payloadHash: event.payloadHash,
-          prevHash: event.prevHash,
-          eventHash: event.eventHash,
-          batch: event.batch,
-          key: event.keyId,
-        }
-      : null,
-    signature: { algorithm: "Ed25519", key: event?.keyId, value: `sig_${event?.eventHash.slice(0, 48) ?? ""}` },
-    verify: `#/verify/${receipt}`,
-    downloaded: TODAY,
-  });
+  // The digest is taken over the body as it is written here; the verification portal recomputes it.
+  void downloadReceiptFile(
+    `${receipt}.json`,
+    {
+      file: `${receipt}.json`,
+      receipt,
+      issuedTo: partyName(given.partner),
+      subject: opaqueOf(given.assetId),
+      use: given.use,
+      territory: territoryName(given.country),
+      askedAt: given.asked,
+      answer: given.answer,
+      resolver: { rule: RULE_VERSION, graph: GRAPH_VERSION },
+      proof: event
+        ? {
+            event: event.seq,
+            type: event.type,
+            payloadHash: event.payloadHash,
+            prevHash: event.prevHash,
+            eventHash: event.eventHash,
+            batch: event.batch,
+            key: event.keyId,
+          }
+        : null,
+      verify: `#/verify/${receipt}`,
+      downloaded: TODAY,
+    },
+    { algorithm: "Ed25519", key: event?.keyId, value: `sig_${event?.eventHash.slice(0, 48) ?? ""}` },
+  );
 }

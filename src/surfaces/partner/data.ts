@@ -11,6 +11,7 @@ import {
   CONFLICTS,
   GRANTS,
   now,
+  PARTIES,
   PARTNERS,
   PROOF,
   REQUESTS,
@@ -21,6 +22,7 @@ import {
 import type { Asset, Decision, Partner, ProofEvent, Request, ScopeLevel, Side, TerritorySet, Use } from "../../graph/model";
 import { clearanceOf, controllers, performersOf, recordingsOf, type Answer, type Clearance } from "../../graph/resolve";
 import { slug } from "../../route";
+import { columnFor, dateOf, isrcProblem, iswcWritten, type CwrAck, type ReadResult } from "../../rights/files";
 
 /**
  * What the Partner portal keeps beside the graph — a partner's application, its keys, its
@@ -749,13 +751,68 @@ let UPLOADS: Upload[] = [
 export const uploadsOf = (partner: string) => UPLOADS.filter((one) => one.partner === partner);
 export const uploadById = (id: string) => UPLOADS.find((one) => one.id === id);
 
+/** The columns a usage or provenance report is read by, found by name; a report without an ISRC column is refused. */
+export function usageColumns(read: ReadResult): { isrc: string; title?: string; used?: string; when?: string; outputs?: string; genesis?: string } | string {
+  const { headers } = read;
+  const isrc = read.mapped ? "Recording ISRC" : columnFor(headers, "ISRC", "Recording ISRC", "Track ISRC");
+  if (!isrc || !headers.includes(isrc)) return `No column names an ISRC — the columns read are ${headers.join(", ")}. Every row is linked to an asset by its ISRC.`;
+  return {
+    isrc,
+    title: read.mapped ? "Recording title" : columnFor(headers, "Title", "Track title", "Recording title", "Song"),
+    used: columnFor(headers, "Used for", "Use", "Usage", "Purpose", "Run", "Used in"),
+    when: columnFor(headers, "Used on", "Date", "When", "Used at", "Usage date"),
+    outputs: columnFor(headers, "Outputs", "Output count", "Outputs reported"),
+    genesis: columnFor(headers, "Genesis", "Genesis event"),
+  };
+}
+
+const sameTitle = (one: string, other: string) => one.toLowerCase().replace(/[^a-z0-9]/g, "") === other.toLowerCase().replace(/[^a-z0-9]/g, "");
+
 /**
- * A report brought in: validated and linked to the graph's assets, its unmatched rows flagged.
- * The prototype does not read the file — it validates the CD-7 sample in its place.
+ * A report brought in, read row by row: each row linked to the graph's recording by its ISRC; a
+ * row whose title differs from the graph's waits on a reviewer as Suggested; a code the graph does
+ * not hold, or that is not an ISRC, is flagged Unmatched. A provenance row linked to an asset gets
+ * the GENESIS event OWEN writes for its output.
  */
-export function addUpload(partner: string, file: string, kind: Upload["kind"]) {
+export function addUpload(partner: string, read: ReadResult, kind: Upload["kind"]) {
   const id = `up-${1100 + UPLOADS.length}`;
-  UPLOADS = [{ id, partner, file, kind, received: now(), state: "Matched", rows: cd7Rows(TODAY, kind === "Provenance") }, ...UPLOADS];
+  const columns = usageColumns(read);
+  const received = now();
+  const rows: UsageRow[] =
+    typeof columns === "string"
+      ? []
+      : read.rows.map((row, index) => {
+          const isrc = (row[columns.isrc] ?? "").trim().toUpperCase();
+          const title = (columns.title && row[columns.title]) || "";
+          const problem = isrcProblem(isrc);
+          const asset = problem ? undefined : ASSETS.find((one) => one.isrc === isrc);
+          const when = (columns.when && dateOf(row[columns.when] ?? "")) || received;
+          const outputs = Number(columns.outputs ? row[columns.outputs] : 0) || 0;
+          const same = asset ? !title || sameTitle(title, asset.title) : false;
+          const genesis =
+            kind === "Provenance" && asset
+              ? (columns.genesis && row[columns.genesis]) || String(mint(`out_${hash(`${asset.id}/${when.getTime()}/${index}`, 8)}`, "AI derivative", when, `genesis/${id}/${index}`, "GENESIS").seq)
+              : undefined;
+          return {
+            row: read.lines[index] ?? index + 2,
+            isrc,
+            title: title || asset?.title || "Untitled",
+            used: (columns.used && row[columns.used]) || kind,
+            when,
+            outputs,
+            assetId: asset?.id,
+            state: asset ? (same ? "Matched" : "Suggested") : "Unmatched",
+            genesis,
+            note: problem
+              ? `Not an ISRC: ${problem}.`
+              : !asset
+                ? "No recording in the graph carries this ISRC."
+                : same
+                  ? undefined
+                  : `Title differs from the graph's “${asset.title}” — matched on ISRC, waiting on a reviewer.`,
+          };
+        });
+  UPLOADS = [{ id, partner, file: read.facts.name, kind, received, state: rows.length ? "Matched" : "Rejected", rows }, ...UPLOADS];
   wrote();
   return id;
 }
@@ -799,6 +856,9 @@ export interface AckFile {
   mismatches: readonly string[];
   /** The conflicts the mismatches opened — or found already open. */
   conflicts: readonly string[];
+  /** Works the society rejected, and works it acknowledged that the graph has no registration for. */
+  rejected?: readonly string[];
+  unknown?: readonly string[];
 }
 
 let ACK_FILES: AckFile[] = [
@@ -809,77 +869,130 @@ let ACK_FILES: AckFile[] = [
 
 export const ackFiles = () => ACK_FILES;
 
-/** What the next acknowledgement file says, work by work — what GEMA's own system produced. */
-const NEXT_ACK: readonly { workId: string; number: string; share: number }[] = [
-  { workId: "w-paper-moons", number: "GEMA 32210-064", share: 70 },
-  { workId: "w-ferry", number: "GEMA 32210-071", share: 60 },
-];
+/** The CWR transaction statuses a society answers with, as the registration reads them. */
+const ACCEPTED = ["AS", "AC", "RA", "SR", "CR", "CO"];
+
+/** What an acknowledgement file answers, work by work: the work it is for, if the graph has it, and what it says. */
+export interface AckAnswer {
+  ack: CwrAck;
+  workId?: string;
+  accepted: boolean;
+  /** The registrant's share of the publisher side, as the society acknowledged it. */
+  share?: number;
+}
 
 /**
- * An acknowledgement file sent (S6-8): each work's registration updates, the society's share is
- * written to the graph as the claim it is (G-1), and where it disagrees with what the graph holds
- * in DE a conflict opens. The prototype does not read the file — it applies GEMA's next file.
+ * The acknowledgements a CWR file holds, each placed on the work the graph has a registration for
+ * — by ISWC, then by title — and the registrant's share read off it: its PR share over every
+ * publisher's on the work, so a 35.00 of 50.00 reads as 70% of the publisher side.
  */
-export function sendAcknowledgements(file: string) {
+export function readAcknowledgements(read: ReadResult): AckAnswer[] {
+  const bare = (value: string) => value.replace(/[^0-9A-Z]/gi, "").toUpperCase();
+  return (read.cwr?.acks ?? []).map((ack) => {
+    const iswc = ack.work?.iswc ? bare(iswcWritten(ack.work.iswc)) : "";
+    const registration = REGISTRATIONS.find((one) => {
+      const work = assetById(one.workId);
+      return (iswc && work.iswc && bare(work.iswc) === iswc) || work.title.toLowerCase() === (ack.work?.title || ack.title).toLowerCase();
+    });
+    const accepted = ACCEPTED.includes(ack.status);
+    let share: number | undefined;
+    if (registration && accepted && ack.work?.publishers.length) {
+      const party = PARTIES.find((one) => one.id === registration.registrant);
+      const total = ack.work.publishers.reduce((sum, one) => sum + (Number.isNaN(one.share) ? 0 : one.share), 0);
+      const own = ack.work.publishers
+        .filter((one) => (party?.ipi && one.ipi === party.ipi) || one.name.toLowerCase() === partyName(registration.registrant).toLowerCase())
+        .reduce((sum, one) => sum + one.share, 0);
+      share = total > 0 ? Math.round((own / total) * 10000) / 100 : undefined;
+    }
+    return { ack, workId: registration?.workId, accepted, share };
+  });
+}
+
+/**
+ * An acknowledgement file sent (S6-8), read from the CWR file itself: each work's registration
+ * updates, the society's share is written to the graph as the claim it is (G-1), and where it
+ * disagrees with what the graph holds in DE a conflict opens. A rejection is kept with the
+ * society's own message; a work the graph has no registration for is listed, never invented.
+ */
+export function sendAcknowledgements(file: string, answers: readonly AckAnswer[]) {
   const mismatches: string[] = [];
   const conflicts: string[] = [];
-  for (const ack of NEXT_ACK) {
-    const registration = registrationOf(ack.workId)!;
-    const held = ASSERTIONS.filter(
-      (one) => one.assetId === ack.workId && one.partyId === registration.registrant && one.interests.includes("Owns") && one.state === "Resolved",
-    ).reduce((most, one) => Math.max(most, one.share), 0);
-    const claim = addAssertion({
-      assetId: ack.workId,
-      partyId: registration.registrant,
-      interests: ["Owns"],
-      side: "Composition",
-      rights: "All composition",
-      shareType: "Publisher",
-      share: ack.share,
-      territory: { include: ["DE"] },
-      from: TODAY,
-      source: "Society acknowledgement",
-      sourceRef: formatMeta([file, ack.number]) ?? file,
-      state: held === ack.share ? "Resolved" : "Contested",
-    });
-    if (held !== ack.share) {
-      mismatches.push(ack.workId);
-      const open = CONFLICTS.find((one) => one.assetId === ack.workId && one.state !== "Resolved" && one.territories.includes("DE"));
-      if (open) conflicts.push(open.id);
-      else {
-        const others = ASSERTIONS.filter((one) => one.assetId === ack.workId && one.shareType === "Publisher" && one.partyId !== registration.registrant && one.state === "Resolved");
-        const total = ack.share + others.reduce((sum, one) => sum + one.share, 0);
-        conflicts.push(
-          addConflict({
-            kind: total > 100 ? "Overclaim" : "Gap",
-            assetId: ack.workId,
-            side: "Composition",
-            severity: assetById(ack.workId).revenue > 10000 ? "High" : "Medium",
-            revenueAtRisk: Math.round((assetById(ack.workId).revenue * Math.abs(total - 100)) / 100),
-            total,
-            territories: ["DE"],
-            claims: [claim, ...others.map((one) => one.id)],
-            parties: [registration.registrant, ...others.map((one) => one.partyId)],
-            opened: TODAY,
-            state: "Open",
-            step: 0,
-            interim: "Paying in DE on the claims the graph held until resolved.",
-            raisedBy: `GEMA acknowledgement · ${file}`,
-          }),
-        );
+  const rejected: string[] = [];
+  const unknown: string[] = [];
+  for (const answer of answers) {
+    if (!answer.workId) {
+      unknown.push(answer.ack.work?.title || answer.ack.title);
+      continue;
+    }
+    const registration = registrationOf(answer.workId)!;
+    if (!answer.accepted) {
+      rejected.push(answer.workId);
+      REGISTRATIONS = REGISTRATIONS.map((one) =>
+        one.workId === answer.workId ? { ...one, state: "Rejected" as const, file, reason: answer.ack.messages.join(" ") || `Rejected by the society (${answer.ack.status}).` } : one,
+      );
+      continue;
+    }
+    const number = answer.ack.societyNumber || registration.number || "";
+    if (answer.share !== undefined) {
+      const ack = { workId: answer.workId, number, share: answer.share };
+      const held = ASSERTIONS.filter(
+        (one) => one.assetId === ack.workId && one.partyId === registration.registrant && one.interests.includes("Owns") && one.state === "Resolved",
+      ).reduce((most, one) => Math.max(most, one.share), 0);
+      const claim = addAssertion({
+        assetId: ack.workId,
+        partyId: registration.registrant,
+        interests: ["Owns"],
+        side: "Composition",
+        rights: "All composition",
+        shareType: "Publisher",
+        share: ack.share,
+        territory: { include: ["DE"] },
+        from: TODAY,
+        source: "Society acknowledgement",
+        sourceRef: formatMeta([file, ack.number].filter(Boolean)) ?? file,
+        state: held === ack.share ? "Resolved" : "Contested",
+      });
+      if (held !== ack.share) {
+        mismatches.push(ack.workId);
+        const open = CONFLICTS.find((one) => one.assetId === ack.workId && one.state !== "Resolved" && one.territories.includes("DE"));
+        if (open) conflicts.push(open.id);
+        else {
+          const others = ASSERTIONS.filter((one) => one.assetId === ack.workId && one.shareType === "Publisher" && one.partyId !== registration.registrant && one.state === "Resolved");
+          const total = ack.share + others.reduce((sum, one) => sum + one.share, 0);
+          conflicts.push(
+            addConflict({
+              kind: total > 100 ? "Overclaim" : "Gap",
+              assetId: ack.workId,
+              side: "Composition",
+              severity: assetById(ack.workId).revenue > 10000 ? "High" : "Medium",
+              revenueAtRisk: Math.round((assetById(ack.workId).revenue * Math.abs(total - 100)) / 100),
+              total,
+              territories: ["DE"],
+              claims: [claim, ...others.map((one) => one.id)],
+              parties: [registration.registrant, ...others.map((one) => one.partyId)],
+              opened: TODAY,
+              state: "Open",
+              step: 0,
+              interim: "Paying in DE on the claims the graph held until resolved.",
+              raisedBy: `GEMA acknowledgement · ${file}`,
+            }),
+          );
+        }
       }
     }
+    REGISTRATIONS = REGISTRATIONS.map((one) =>
+      one.workId === answer.workId
+        ? { ...one, number: number || one.number, share: answer.share ?? one.share, acknowledged: answer.ack.processed ?? TODAY, state: "Acknowledged" as const, file, reason: undefined }
+        : one,
+    );
   }
-  REGISTRATIONS = REGISTRATIONS.map((one) => {
-    const ack = NEXT_ACK.find((each) => each.workId === one.workId);
-    return ack ? { ...one, number: ack.number, share: ack.share, acknowledged: TODAY, state: "Acknowledged" as const, file } : one;
-  });
-  ACK_FILES = [{ id: `ack-${ACK_FILES.length + 1}`, file, sent: TODAY, works: NEXT_ACK.map((one) => one.workId), mismatches, conflicts }, ...ACK_FILES];
+  const works = answers.flatMap((one) => (one.workId && one.accepted ? [one.workId] : []));
+  ACK_FILES = [{ id: `ack-${ACK_FILES.length + 1}`, file, sent: now(), works, mismatches, conflicts, rejected, unknown }, ...ACK_FILES];
   wrote();
 }
 
-/** Whether GEMA's next file is still to send. */
-export const ackPending = () => REGISTRATIONS.some((one) => one.state === "Sent" && NEXT_ACK.some((ack) => ack.workId === one.workId));
+/** Whether a registration sent to the society still waits on its answer. */
+export const ackPending = () => REGISTRATIONS.some((one) => one.state === "Sent");
 
 // ---------------------------------------------------------------------------------------------
 // Seeds — written once, against the graph as it opens.

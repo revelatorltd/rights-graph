@@ -1,11 +1,11 @@
 import { useState } from "react";
 import {
   Alert,
+  Button,
   Field,
   Link,
   RecordIndex,
   UploaderDocument,
-  UploaderFileRow,
   Wizard,
   WizardRow,
   WizardRowBody,
@@ -17,7 +17,11 @@ import {
   formatCount,
   owed,
   useAnswer,
+  useChangeAnswers,
 } from "@revelator/pro-ui";
+
+import { ChosenRow, ReadSummary, SampleFiles, choose, type Chosen } from "../../rights/file-parts";
+import { sampleFile, type ReadResult } from "../../rights/files";
 
 import { go } from "../../route";
 import { contributorHref } from "./address";
@@ -30,7 +34,10 @@ import {
   dropFailed,
   ingest,
   mappingFor,
+  mappingSource,
   mappings,
+  readIn,
+  readOf,
   receive,
   resubmit,
   rowErrorsOf,
@@ -73,12 +80,16 @@ const fedName = (format: Format) => `MMG_${format.replace(/\s/g, "")}_2026-10-20
  * until the check has passed, and the reader is told so at every stage. Opened on a held batch, it
  * begins at the schema check — the file is already in.
  */
+/** The canned sample: the 88,412-row Q3 splits file, its row errors the graph's own. */
+const CANNED: Chosen = { name: "MMG_publishing_splits_Q3.csv", canned: true };
+const CANNED_SAYS = `${formatCount(88412, ROWS)} of Meridian's Q3 publishing splits, already in the graph's fixtures — its row errors are the graph's own. Choose a file to read a real one.`;
+
 export function UploadFlow({ resubmitting }: { resubmitting?: string }) {
   const held = resubmitting ? batchById(resubmitting) : undefined;
   const [stage, setStage] = useState(held ? 1 : 0);
   const [batchId, setBatchId] = useState(held?.id);
-  const [file, setFile] = useState<File | null>(null);
-  const [fixed, setFixed] = useState<File | null>(null);
+  const [file, setFile] = useState<Chosen | null>(null);
+  const [fixed, setFixed] = useState<Chosen | null>(null);
   const batch = batchId ? batchById(batchId) : undefined;
   const errors = batch ? rowErrorsOf(batch.id) : [];
   const blocked = batch?.state === "Row errors";
@@ -105,8 +116,9 @@ export function UploadFlow({ resubmitting }: { resubmitting?: string }) {
         fix: owed("" as string),
       }}
       ready={(answers) => {
-        if (stage === 0) return answers.channel !== "Upload" || file !== null;
-        if (stage === 1 && blocked) return answers.fix === "drop" || (answers.fix === "fix" && fixed !== null);
+        // A file chosen here goes on once it is read, as the format it reads as.
+        if (stage === 0) return answers.channel !== "Upload" || Boolean(file?.canned || (file?.read && file.read.format === answers.format));
+        if (stage === 1 && blocked) return answers.fix === "drop" || (answers.fix === "fix" && Boolean(fixed?.read || fixed?.canned));
         return true;
       }}
       onCommit={(answers) => {
@@ -115,14 +127,19 @@ export function UploadFlow({ resubmitting }: { resubmitting?: string }) {
           if (!batch) {
             const format = answers.format as Format;
             const channel = answers.channel as Channel;
-            setBatchId(receive(file?.name ?? fedName(format), format, channel, ROWS_OF[format]));
+            const read = channel === "Upload" ? file?.read : undefined;
+            setBatchId(receive(channel === "Upload" && file ? file.name : fedName(format), format, channel, ROWS_OF[format], read));
           }
           setStage(1);
           return;
         }
         if (stage === 1) {
           if (blocked && answers.fix === "drop") dropFailed(batch!.id);
-          if (blocked && answers.fix === "fix") resubmit(batch!.id, fixed!.name);
+          // A corrected file read here is checked again; failing again, it stays at the check.
+          if (blocked && answers.fix === "fix" && !resubmit(batch!.id, fixed!.name, fixed!.read)) {
+            setFixed(null);
+            return;
+          }
           setStage(2);
           return;
         }
@@ -135,7 +152,7 @@ export function UploadFlow({ resubmitting }: { resubmitting?: string }) {
         <WizardSection>
           <WizardSectionHeader title="Schema check" />
           <WizardSectionBody>
-            {batch.format === "CSV" ? <MappingApplied /> : null}
+            {batch.format === "CSV" ? <MappingApplied read={readOf(batch.id)} /> : null}
             {blocked ? (
               <>
                 <WizardRow title="Rows that failed">
@@ -145,7 +162,7 @@ export function UploadFlow({ resubmitting }: { resubmitting?: string }) {
                     </Alert>
                     <RecordIndex
                       rows={errors}
-                      rowKey={(one) => String(one.row)}
+                      rowKey={(one) => `${one.row}/${one.field}`}
                       noun={{ one: "failed row", many: "failed rows" }}
                       identity={{ title: "Row", name: (one) => `Row ${one.row}`, value: (one) => one.row, as: "reference" }}
                       columns={[
@@ -158,7 +175,11 @@ export function UploadFlow({ resubmitting }: { resubmitting?: string }) {
                     />
                   </WizardRowBody>
                   <WizardRowTips>
-                    <WizardRowTip>One row of each kind is shown. Download every failed row from the batch, fix them in your system, and send the whole file again.</WizardRowTip>
+                    <WizardRowTip>
+                      {readOf(batch.id)
+                        ? "Every failed row is listed, by its line in your file. Download them from the batch with your own columns beside each problem, fix them, and send the whole file again."
+                        : "One row of each kind is shown. Download every failed row from the batch, fix them in your system, and send the whole file again."}
+                    </WizardRowTip>
                   </WizardRowTips>
                 </WizardRow>
                 <WizardRow title="How to go on">
@@ -207,7 +228,7 @@ export function UploadFlow({ resubmitting }: { resubmitting?: string }) {
 }
 
 /** The first stage: what the file is, how it travels, and — uploaded here — the file. */
-function ChooseFile({ file, onFile }: { file: File | null; onFile: (file: File | null) => void }) {
+function ChooseFile({ file, onFile }: { file: Chosen | null; onFile: (file: Chosen | null) => void }) {
   return (
     <WizardSection>
       <WizardSectionHeader title="File" />
@@ -238,47 +259,98 @@ function ChooseFile({ file, onFile }: { file: File | null; onFile: (file: File |
   );
 }
 
-/** The file itself, where it is uploaded here; a feed's file arrives on its own. */
-function ChannelFile({ file, onFile }: { file: File | null; onFile: (file: File | null) => void }) {
+/** The samples a reviewer can upload, each a file in `public/samples`. */
+const SAMPLES = [
+  { name: "contributor_splits_sample.csv", label: "Download the sample CSV" },
+  { name: "ddex_ern43_sample.xml", label: "Download the sample DDEX ERN" },
+];
+
+/**
+ * The file itself, where it is uploaded here; a feed's file arrives on its own. Chosen, it is read
+ * at once, and the format it reads as answers the format question — a Parquet file is refused
+ * here with its reason, since the browser does not read it.
+ */
+function ChannelFile({ file, onFile }: { file: Chosen | null; onFile: (file: Chosen | null) => void }) {
+  const change = useChangeAnswers();
+  const format = useAnswer("format");
+  const take = (read: ReadResult | undefined) => {
+    if (!read) return;
+    readIn(read);
+    if ((FORMATS as readonly string[]).includes(read.format)) change({ format: read.format });
+  };
   if (useAnswer("channel") !== "Upload") return null;
   return (
-    <UploaderDocument
-      multiple={false}
-      formats={FORMATS.join(", ")}
-      noun={{ one: "file", many: "files" }}
-      onSelect={(files) => onFile(files[0] ?? null)}
-    >
-      {file ? <UploaderFileRow name={file.name} phase="landed" fileSize={file.size} onRemove={() => onFile(null)} /> : null}
-    </UploaderDocument>
+    <>
+      <UploaderDocument
+        multiple={false}
+        formats={FORMATS.join(", ")}
+        noun={{ one: "file", many: "files" }}
+        onSelect={(files) => (files[0] ? void choose(files[0], onFile).then(take) : onFile(null))}
+      >
+        {file ? <ChosenRow chosen={file} onRemove={() => onFile(null)} /> : null}
+      </UploaderDocument>
+      {file ? <ReadSummary chosen={file} canned={CANNED_SAYS} /> : null}
+      {file?.read && format && file.read.format !== format ? (
+        <Alert intent="warn" title={`This file reads as ${file.read.format}`}>
+          {`The format says ${String(format)}. Choose ${file.read.format} to go on, or choose another file.`}
+        </Alert>
+      ) : null}
+      <Button
+        variant="inline"
+        onClick={() => {
+          onFile(CANNED);
+          change({ format: "CSV" });
+        }}
+      >
+        Use the sample file
+      </Button>
+      <SampleFiles samples={SAMPLES} />
+    </>
   );
 }
 
-/** The corrected file, asked for only where the contributor resubmits rather than drops. */
-function FixedFile({ fixed, onFixed }: { fixed: File | null; onFixed: (file: File | null) => void }) {
+/** The corrected file, asked for only where the contributor resubmits rather than drops — read and checked again. */
+function FixedFile({ fixed, onFixed }: { fixed: Chosen | null; onFixed: (file: Chosen | null) => void }) {
   if (useAnswer("fix") !== "fix") return null;
   return (
-    <UploaderDocument
-      multiple={false}
-      noun={{ one: "corrected file", many: "corrected files" }}
-      onSelect={(files) => onFixed(files[0] ?? null)}
-    >
-      {fixed ? <UploaderFileRow name={fixed.name} phase="landed" fileSize={fixed.size} onRemove={() => onFixed(null)} /> : null}
-    </UploaderDocument>
+    <>
+      <UploaderDocument
+        multiple={false}
+        noun={{ one: "corrected file", many: "corrected files" }}
+        onSelect={(files) => (files[0] ? void choose(files[0], onFixed) : onFixed(null))}
+      >
+        {fixed ? <ChosenRow chosen={fixed} onRemove={() => onFixed(null)} /> : null}
+      </UploaderDocument>
+      {fixed ? <ReadSummary chosen={fixed} canned={CANNED_SAYS} /> : null}
+      <Button variant="inline" onClick={() => void sampleFile("contributor_splits_sample.csv").then((one) => choose(one, onFixed))}>
+        Read the sample CSV again
+      </Button>
+    </>
   );
 }
 
-/** A CSV is read through the saved mapping its headers fit — applied without being asked (S5-9). */
-function MappingApplied() {
+/**
+ * A CSV is read through the mapping its headers fit (S5-9): read here, its own headers matched to
+ * the graph's fields by name; fed, the saved mapping applied without being asked.
+ */
+function MappingApplied({ read }: { read?: ReadResult }) {
   const saved = mappingFor("CSV");
   const rows = mappings();
   const done = rows.filter((one) => one.state === "Completed").length;
-  if (!saved) return null;
+  const suggested = rows.filter((one) => one.state === "Suggested").length;
+  if (!saved && !read) return null;
   return (
     <WizardRow title="Mapping">
       <WizardRowBody>
-        <Alert intent="info" title={`Mapped with “${saved.name}”`}>
-          {`${done} of ${rows.length} headers map to the graph's fields; the rest are held back until they are mapped.`}
-        </Alert>
+        {read ? (
+          <Alert intent="info" title={`Mapped by its headers — ${mappingSource()}`}>
+            {`${done} of ${rows.length} headers are a field's own name, ${suggested} are suggested by name, and the rest are held back until they are mapped. The check read the file through the settled and suggested fields.`}
+          </Alert>
+        ) : (
+          <Alert intent="info" title={`Mapped with “${saved!.name}”`}>
+            {`${done} of ${rows.length} headers map to the graph's fields; the rest are held back until they are mapped.`}
+          </Alert>
+        )}
         <Link opens={contributorHref("mapping")}>Review the mapping</Link>
       </WizardRowBody>
     </WizardRow>

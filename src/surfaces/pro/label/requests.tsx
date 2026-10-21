@@ -34,7 +34,10 @@ import { ClearanceBadge, TerritoryChip, decidedBy, partyMark } from "../../../ri
 import { assetMark } from "./catalogue";
 import { ANSWERS, DELEGATIONS, LABEL, assetsIn, grantName, labelRequests, rightsHref, scopeLine, waiting, useText } from "./data";
 import { approveBlocked, requestCommands } from "./request-dialogs";
+import { claimOfRequest } from "../../../graph/identity";
+import { claimAsk } from "../../artist/claim-review";
 import { exportCommand, labelActivity } from "./shared";
+import { EscalatedAlert, escalatedTo } from "../../notify/escalated";
 
 /** The party on the other side of a request, from the label's seat. */
 const counterpart = (one: Request) => (one.from === LABEL ? one.to : one.from);
@@ -44,6 +47,7 @@ export function askOf(one: Request) {
   if (one.type === "Licence") return `${one.use} for ${partyName(one.from)}`;
   if (one.type === "Conflict response") return `Conflict response on ${one.scope.name}`;
   if (one.type === "Credit confirmation") return `Credit confirmation by ${partyName(one.to)}`;
+  if (claimOfRequest(one)) return claimAsk(claimOfRequest(one)!);
   if (one.type === "Attestation") {
     const claim = ATTESTATIONS.find((each) => each.id === one.about)?.claim;
     return `${claim ?? one.use ?? "Attestation"} signature from ${partyName(one.to)}`;
@@ -102,6 +106,7 @@ export function Requests() {
           { name: "Deadline", as: "date", value: (one) => one.deadline },
           { name: "Received", as: "date", grain: "minute", value: (one) => one.received },
           { name: "Delegated to", value: (one) => DELEGATIONS.get(one.id)?.to ?? "", cell: (one) => DELEGATIONS.get(one.id)?.to },
+          { name: "Escalated to", value: (one) => escalatedTo(one) ?? "", cell: escalatedTo },
           { name: "State", value: (one) => one.state, cell: (one) => <Badge status={`request:${one.state}`} /> },
         ],
         readings: [
@@ -178,13 +183,7 @@ export function RequestDetail({ id }: { id: string }) {
       }}
     >
       <Metadata>
-        {request.state === "Escalated" ? (
-          <Alert intent="warn" title="Escalated">
-            {request.from === LABEL
-              ? `${partyName(request.to)} has not answered since ${formatDate(request.received, "day")}; past its deadline of ${formatDate(request.deadline, "day")} it moved to the next role on their side. You still see it as the one who sent it.`
-              : `Unanswered past its deadline of ${formatDate(request.deadline, "day")}, it moved up to Kestrel Point's label admins. You still see it as its original owner.`}
-          </Alert>
-        ) : null}
+        <EscalatedAlert request={request} />
         {request.state === "Auto-cleared" && grant ? (
           <Alert intent="info" title="Cleared by a standing grant">
             {`${useText(grant.use)} at ${grant.level.toLowerCase()} level, for ${grant.partners.ids.map(partyName).join(", ") || "approved partners"} — logged, with nothing to decide. `}

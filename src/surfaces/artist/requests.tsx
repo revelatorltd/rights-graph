@@ -3,6 +3,7 @@ import { Badge, CollectionPage, DetailPage, FactCard, Metadata, type Command } f
 import { REQUESTS } from "../../graph/fixtures";
 import type { Request } from "../../graph/model";
 import { ClearanceBadge, TerritoryChip, decidedBy, partyMark } from "../../rights/kit";
+import { EscalatedAlert } from "../notify/escalated";
 import type { Shown } from "../surface";
 import { inboxOf, isOpen, optOutOf, outOfScope, partyName, voiceAnswer, type Reader } from "./data";
 import { ApproveRequest, DeclineRequest } from "./dialogs";
@@ -112,6 +113,7 @@ function RequestBody({ reader, request }: { reader: Reader; request: Request }) 
       }}
     >
       <Metadata>
+        <EscalatedAlert request={request} />
         <FactCard
           title="What they ask"
           facts={[

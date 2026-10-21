@@ -14,11 +14,14 @@ export const CONSOLE_PAGES = [
   "claims",
   "claimants",
   "matches",
+  "identity",
   "merges",
   "coverage",
   "rules",
   "tenants",
   "proof",
+  "traffic",
+  "notifications",
 ] as const;
 export type ConsolePage = (typeof CONSOLE_PAGES)[number];
 

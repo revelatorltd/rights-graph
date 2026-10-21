@@ -1,5 +1,6 @@
 import { Alert, Avatar, CollectionPage, DetailPage, FactCard, Metadata } from "@revelator/pro-ui";
 
+import { downloadJson } from "../../rights/files";
 import { SIGNING_KEYS, TODAY } from "../../graph/fixtures";
 import { href } from "../../route";
 import { AUDITS, CHARTER, type AuditReport } from "./data";
@@ -25,7 +26,7 @@ export function Charter() {
           { as: "date", value: CHARTER.adopted, label: "Adopted" },
           { as: "count", value: CHARTER.signatories, noun: { one: "signatory", many: "signatories" } },
         ],
-        actions: [{ label: "Download", mark: "download", iconOnly: true, opens: () => {} }],
+        actions: [{ label: "Download", mark: "download", iconOnly: true, opens: () => downloadJson(`contributor-charter-${CHARTER.version}.json`, CHARTER) }],
       }}
     >
       <Metadata>

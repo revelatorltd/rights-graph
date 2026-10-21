@@ -10,8 +10,13 @@ import { creditsPage } from "./credits";
 import { IDENTITY, PERSONAS, readerOf, type Persona, type Reader } from "./data";
 import { homePage } from "./home";
 import { artistHref } from "./place";
-import { delegatesPage, identityPage, profilesPage } from "./profile";
+import { assuranceOf, signOut, signedIn } from "../../graph/identity";
+import { identityPage, newcomerReader, personOf, profilesPage } from "./identity";
+import { delegatesPage } from "./profile";
+import { SignUp, VerifyIdentity } from "./signup";
 import { requestPage, requestsPage } from "./requests";
+import { noticeCommand, noticePage, noticeSection } from "../notify/pages";
+import { artistSeat } from "../notify/seats";
 import { societiesPage, worksPage } from "./works";
 
 /**
@@ -27,8 +32,12 @@ export function usePersonaOf(): Persona {
   return (usePersona(PERSONAS) as Persona | undefined) ?? "Artist";
 }
 
-function productFor(persona: Persona): ShellProduct {
-  const reader = readerOf(persona);
+/** A fifth way in, from the map: someone new, walking sign-up (S3-1) — the reader is whoever signed up. */
+const NEWCOMER = "New artist";
+const APP_PERSONAS = [...PERSONAS, NEWCOMER] as const;
+type AppPersona = (typeof APP_PERSONAS)[number];
+
+function productFor(persona: AppPersona, reader: Reader): ShellProduct {
   const destinations: ShellDestination[] = [
     {
       name: "Home",
@@ -38,7 +47,7 @@ function productFor(persona: Persona): ShellProduct {
     },
     { name: "Credits", mark: "audio", opens: artistHref("credits") },
     // Writer mode adds Works (FRD S3): the works, their registrations, the memberships missing.
-    ...(persona === "Writer"
+    ...(reader.persona === "Writer"
       ? [
           {
             name: "Works",
@@ -72,13 +81,20 @@ function productFor(persona: Persona): ShellProduct {
   ];
   return {
     workspace: { name: "Revelator", mark: ORGANIZATIONS.revelator.art },
-    personas: PERSONAS,
+    personas: APP_PERSONAS,
     destinations,
+    // Notifications (S4-4): push and email to the phone, kept here; reached from the account menu.
+    // Someone who has only just signed up has none yet.
+    offRail: persona === NEWCOMER ? [] : [noticeSection(artistSeat(reader.persona))],
     user: {
       name: reader.actor.name,
-      email: IDENTITY[reader.actor.id]?.email ?? "dara@whitlockmgmt.example",
-      // Signing out leaves the app, which this prototype does not model.
-      commands: [[{ label: "Sign out", opens: () => {} }]],
+      email: (persona === NEWCOMER ? signedIn()?.contact : IDENTITY[reader.actor.id]?.email) ?? "dara@whitlockmgmt.example",
+      // Signing out leaves the app, which this prototype does not model — except for the new
+      // artist, whose sign-out starts the sign-up again.
+      commands: [
+        ...(persona === NEWCOMER ? [] : [[noticeCommand(artistSeat(reader.persona))]]),
+        [{ label: "Sign out", opens: persona === NEWCOMER ? signOut : () => {} }],
+      ],
     },
   };
 }
@@ -98,19 +114,25 @@ const PAGES: Record<string, (reader: Reader, rest: readonly string[]) => Shown> 
   delegates: (reader) => delegatesPage(reader),
   works: (reader) => worksPage(reader),
   societies: (reader) => societiesPage(reader),
+  notifications: (reader, rest) => noticePage(artistSeat(reader.persona), rest),
 };
 
 /** `#/artist/<page>/<id>/<facet>` */
 export function ArtistApp({ path }: { path: readonly string[] }) {
-  const [persona, follow] = useShellPersona(PERSONAS, "Artist");
-  const reader = readerOf(persona);
+  const [persona, follow] = useShellPersona(APP_PERSONAS, "Artist");
+  const newcomer = persona === NEWCOMER ? newcomerReader() : undefined;
   const [page = "home", ...rest] = path;
+  // Someone new signs up first; the sign-up stays on screen while it runs, past the ArtistID it makes.
+  if (persona === NEWCOMER && (!newcomer || page === "sign-up")) return <SignUp />;
+  const reader = newcomer ?? readerOf(persona as Persona);
+  if (page === "verify-id" && reader.persona !== "Delegate")
+    return <VerifyIdentity person={personOf(reader)} upgrading={assuranceOf(personOf(reader)) !== "Verified + ID"} />;
   // Works is writer mode's: another reader landing on its address is taken Home.
-  const name = (page === "works" || page === "societies") && persona !== "Writer" ? "home" : page;
+  const name = (page === "works" || page === "societies") && reader.persona !== "Writer" ? "home" : page;
   const shown = (PAGES[name] ?? PAGES.home!)(reader, rest);
   if ("cover" in shown) return shown.cover;
   return (
-    <AppShell product={productFor(persona)} place={shown.place}>
+    <AppShell product={productFor(persona, reader)} place={shown.place}>
       {follow}
       {shown.page}
     </AppShell>

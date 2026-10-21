@@ -4,6 +4,8 @@ import { conflictById, partyName, setRequestState } from "../../../graph/fixture
 import type { Request, Use } from "../../../graph/model";
 import { territoryLabel } from "../../../graph/resolve";
 import { RespondWithEvidence } from "./conflict-dialogs";
+import { claimOfRequest } from "../../../graph/identity";
+import { claimCommands } from "../../artist/claim-review";
 import {
   COUNTRIES,
   DEPENDENCY_REASON,
@@ -215,6 +217,9 @@ export function approveBlocked(request: Request) {
  */
 export function requestCommands(request: Request): Command[] {
   const open: Command = { label: "Open", opens: rightsHref("requests", request.id) };
+  // An ArtistID claim (S3-2) is confirmed or declined, never approved as a licence.
+  const claim = claimOfRequest(request);
+  if (claim) return claimCommands(claim, { actor: ME.name, for: ME.label }, open);
   if (request.from === LABEL)
     return [
       open,

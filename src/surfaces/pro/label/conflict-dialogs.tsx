@@ -64,7 +64,7 @@ export function RespondWithEvidence({ conflict, request, ...held }: HeldBy & { c
           at: NOW,
           by: ME.name,
         });
-        updateConflict(conflict.id, { step: Math.max(conflict.step, 1), state: "Awaiting evidence" });
+        updateConflict(conflict.id, { step: Math.max(conflict.step, 1), state: "Awaiting evidence" }, "p-kestrel");
         if (request) setRequestState(request.id, "Approved", decision(ME.label, draft.agreement || undefined));
       }}
     >
@@ -124,7 +124,7 @@ export function WithdrawClaim({ conflict, ...held }: HeldBy & { conflict: Confli
             reason: `${ME.label} withdrew its side.`,
             rule: `Resolver ${RULE_VERSION} · withdrawal`,
           },
-        });
+        }, "p-kestrel");
       }}
     />
   );

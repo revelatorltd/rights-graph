@@ -2,6 +2,8 @@ import { AppShell, usePersona, type ShellProduct } from "@revelator/pro-ui";
 import { ORGANIZATIONS } from "@revelator/pro-ui/assets";
 
 import { href } from "../../route";
+import { noticeCommand, noticePage, noticeSection } from "../notify/pages";
+import { proSeat } from "../notify/seats";
 import { useShellPersona, type PageOf } from "../surface";
 import { CATALOG_PAGES } from "./catalog";
 import { LABEL_PAGES, LABEL_RIGHTS_NAV } from "./label";
@@ -54,10 +56,12 @@ function productFor(persona: Persona): ShellProduct {
         pages: persona === "Label" ? LABEL_RIGHTS_NAV : PUBLISHER_RIGHTS_NAV,
       },
     ],
+    // Notifications (S4-4) sit off the rail, reached from the account menu (the top bar has no slot).
+    offRail: [noticeSection(proSeat(persona))],
     user:
       persona === "Label"
-        ? { name: "Priya Raman", email: "priya.raman@kestrelpoint.example", commands: [[{ label: "Sign out", opens: () => {} }]] }
-        : { name: "Elena Marsh", email: "elena.marsh@harbormusic.example", commands: [[{ label: "Sign out", opens: () => {} }]] },
+        ? { name: "Priya Raman", email: "priya.raman@kestrelpoint.example", commands: [[noticeCommand(proSeat(persona))], [{ label: "Sign out", opens: () => {} }]] }
+        : { name: "Elena Marsh", email: "elena.marsh@harbormusic.example", commands: [[noticeCommand(proSeat(persona))], [{ label: "Sign out", opens: () => {} }]] },
   };
 }
 
@@ -65,6 +69,15 @@ function productFor(persona: Persona): ShellProduct {
 export function RevelatorPro({ path }: { path: readonly string[] }) {
   const [persona, follow] = useShellPersona(PERSONAS, "Label");
   const [section = "rights", page = "overview", ...rest] = path;
+  if (section === "notifications") {
+    const shown = noticePage(proSeat(persona), path.slice(1));
+    return "cover" in shown ? shown.cover : (
+      <AppShell product={productFor(persona)} place={shown.place}>
+        {follow}
+        {shown.page}
+      </AppShell>
+    );
+  }
   const pages: Record<string, PageOf> =
     section === "catalog" ? CATALOG_PAGES : persona === "Label" ? LABEL_PAGES : PUBLISHER_PAGES;
   const found = pages[page] ?? pages.overview ?? Object.values(pages)[0]!;

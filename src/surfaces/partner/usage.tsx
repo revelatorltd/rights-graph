@@ -7,15 +7,16 @@ import {
   Field,
   FormDialog,
   RecordIndex,
+  Alert,
   UploaderDocument,
-  UploaderFileRow,
   owed,
   type HeldBy,
 } from "@revelator/pro-ui";
 
 import { assetById } from "../../graph/fixtures";
 import { go, href } from "../../route";
-import { addUpload, uploadById, uploadsOf, type Upload, type UsageRow } from "./data";
+import { ChosenRow, ReadSummary, SampleFiles, choose, type Chosen } from "../../rights/file-parts";
+import { addUpload, uploadById, uploadsOf, usageColumns, type Upload, type UsageRow } from "./data";
 import { cannotLookUp } from "./lookups";
 import { partnerHref, type PartnerPage, type Working } from "./working";
 
@@ -23,19 +24,23 @@ const MATCH: readonly UsageRow["state"][] = ["Unmatched", "Suggested", "Matched"
 
 /**
  * A usage or provenance report brought in (S6-5): what was used, when, and which outputs it went
- * into — or, for provenance, the genesis record OWEN wrote for each output. The prototype does
- * not read the file; it validates the CD-7 sample in its place (docs/gaps/s6-partner.md).
+ * into — or, for provenance, the genesis record OWEN wrote for each output. The file is read here
+ * (CSV, JSON or DDEX ERN), each row linked to the graph's asset by its ISRC, and the rows the
+ * graph cannot place are flagged. A report with no ISRC column is refused before it is sent.
  */
 export function UploadReport({ working, ...held }: HeldBy & { working: Working }) {
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<Chosen | null>(null);
   const provenance = working.partner.kind === "AI platform";
+  const columns = file?.read ? usageColumns(file.read) : undefined;
+  const refused = typeof columns === "string" ? columns : undefined;
   return (
     <FormDialog
       {...held}
       confirm="Upload"
+      onClose={() => setFile(null)}
       draft={{ kind: owed("Usage") }}
-      ready={() => file !== null}
-      onCommit={(draft) => go(partnerHref("usage", addUpload(working.partner.id, file!.name, draft.kind as Upload["kind"])))}
+      ready={() => Boolean(file?.read) && !refused}
+      onCommit={(draft) => go(partnerHref("usage", addUpload(working.partner.id, file!.read!, draft.kind as Upload["kind"])))}
     >
       <Field
         as="choice"
@@ -46,9 +51,22 @@ export function UploadReport({ working, ...held }: HeldBy & { working: Working }
           ...(provenance ? [{ value: "Provenance", title: "Provenance", description: "Genesis records for outputs, written via OWEN." }] : []),
         ]}
       />
-      <UploaderDocument multiple={false} noun={{ one: "report", many: "reports" }} formats="CSV, JSON or DDEX ERN" accept=".csv,.json,.xml,.zip" onSelect={(files) => setFile(files[0] ?? null)}>
-        {file ? <UploaderFileRow name={file.name} fileSize={file.size} phase="landed" onRemove={() => setFile(null)} /> : null}
+      <UploaderDocument
+        multiple={false}
+        noun={{ one: "report", many: "reports" }}
+        formats="CSV, JSON or DDEX ERN"
+        accept=".csv,.json,.xml,.txt"
+        onSelect={(files) => (files[0] ? void choose(files[0], setFile) : setFile(null))}
+      >
+        {file ? <ChosenRow chosen={file} onRemove={() => setFile(null)} /> : null}
       </UploaderDocument>
+      {file ? <ReadSummary chosen={file} /> : null}
+      {refused ? (
+        <Alert intent="danger" title="Nothing to link the rows by">
+          {refused}
+        </Alert>
+      ) : null}
+      <SampleFiles samples={[{ name: "partner_usage_sample.csv", label: "Download a sample file" }]} />
     </FormDialog>
   );
 }
@@ -120,7 +138,7 @@ export function UploadDetail({ upload }: { upload: Upload }) {
         noun={{ one: "row", many: "rows" }}
         note={
           upload.state === "Rejected"
-            ? "The file could not be read as the format it claimed: nothing was linked. Send it again as CSV, JSON or DDEX ERN."
+            ? "The file held no row that could be linked: nothing was attributed. Send it again as CSV, JSON or DDEX ERN, with an ISRC on every row."
             : `${unmatched(upload)} of ${upload.rows.length} rows are not linked to an asset — nothing is attributed to them until they are.`
         }
         identity={{ title: "Title", name: (one) => one.title, mark: (one) => <Avatar kind="work" name={one.title} /> }}

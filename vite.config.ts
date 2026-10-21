@@ -52,10 +52,29 @@ const systemAssets = (): Plugin => ({
   },
 });
 
+/**
+ * S9 over real HTTP, in development only: `/api/*` answered by the same handlers the in-browser
+ * explorer calls (`src/api/server.ts`), loaded through Vite's SSR loader so they are the app's own
+ * TypeScript, reloaded when it changes. The state is the DEV SERVER's — its own copy of the
+ * fixtures and whatever curl wrote since — never a browser session's. A build carries none of it.
+ */
+const graphApi = (): Plugin => ({
+  name: "graph-api",
+  apply: "serve",
+  configureServer(server) {
+    server.middlewares.use("/api", (request, response, next) => {
+      server
+        .ssrLoadModule("/src/api/server.ts")
+        .then((api) => (api as typeof import("./src/api/server")).serve(request, response))
+        .catch(next);
+    });
+  },
+});
+
 // The design system is an installed package, pre-bundled as any dependency is: `npm run ds:update`
 // changes the lockfile, and a changed lockfile is what makes Vite bundle it again.
 export default defineConfig({
   base: BASE,
-  plugins: [react(), systemAssets()],
+  plugins: [react(), systemAssets(), graphApi()],
   server: { port: 5190 },
 });

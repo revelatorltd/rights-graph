@@ -1,0 +1,54 @@
+{
+  "file": "rcpt_7Q2M-9F4K-CD7A.json",
+  "receipt": "rcpt_7Q2M-9F4K-CD7A",
+  "issuedTo": "Cadence AI",
+  "subject": "ast_7e1c9b2a",
+  "use": "AI training",
+  "territory": "United States",
+  "askedAt": "2026-10-20T06:58:00.000Z",
+  "answer": {
+    "state": "Granted",
+    "reason": "Kestrel Point Recordings granted the master side for Cadence AI.",
+    "master": {
+      "state": "Granted",
+      "reason": "Kestrel Point Recordings granted the master side for Cadence AI.",
+      "level": "Catalogue",
+      "grant": "g-1"
+    },
+    "composition": [
+      {
+        "state": "Granted",
+        "reason": "Silverbirch Publishing House granted the composition side for Cadence AI.",
+        "level": "Catalogue",
+        "work": "w-paper-moons",
+        "party": "p-silverbirch",
+        "grant": "g-13"
+      }
+    ]
+  },
+  "resolver": {
+    "rule": "v1.3",
+    "graph": "gv-2026.10.20-0958"
+  },
+  "proof": {
+    "event": 882140,
+    "type": "CLEARANCE_RECEIPT",
+    "payloadHash": "00003000a000500040007000e0402c00ec4047006c002c00ec4047006c002c00",
+    "prevHash": "00003000a0005040db80a600de00b600ae004600fe005600ce00e6001e396c00",
+    "eventHash": "00003039167e2800380008009800e800f800c8005800a800b800880018006800",
+    "batch": "mb-22053",
+    "key": "pl-ed25519-2026-07"
+  },
+  "verify": "#/verify/rcpt_7Q2M-9F4K-CD7A",
+  "downloaded": "2026-10-19T21:00:00.000Z",
+  "digest": {
+    "algorithm": "SHA-256",
+    "over": "canonical JSON of every field but digest and signature",
+    "value": "31a2e69e95ffcc5f01ca0781cd5a21b068fe17b51af3302f5f3a7f0efe4765f3"
+  },
+  "signature": {
+    "algorithm": "Ed25519",
+    "key": "pl-ed25519-2026-07",
+    "value": "sig_00003039167e2800380008009800e800f800c8005800a800"
+  }
+}
