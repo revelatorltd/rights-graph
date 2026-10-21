@@ -18,6 +18,7 @@ import { noticeCommand, noticePage, noticeSection } from "../notify/pages";
 import { consoleSeat } from "../notify/seats";
 import { IdentityClaimsPage } from "../artist/claim-review";
 import { OPS_ONLY, PERSONAS, SIGNED_IN, consoleHref, type ConsolePage, type Persona } from "./where";
+import { Arriving } from "../arriving";
 
 /**
  * The Sureel Graph Console (S7) — where the graph is run. Imitates RCC, Revelator's own ops console:
@@ -122,7 +123,9 @@ export function GraphConsole({ path }: { path: readonly string[] }) {
       {follow}
       {/* KEYED by the whole address, so a second index opens fresh rather than inheriting the
           first one's filters, reading and sort. */}
-      <Fragment key={[page, ...rest].join("/")}>{shown.page}</Fragment>
+      <Fragment key={[page, ...rest].join("/")}>
+        <Arriving>{shown.page}</Arriving>
+      </Fragment>
     </AppShell>
   );
 }

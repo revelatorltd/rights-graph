@@ -14,6 +14,7 @@ import { MatchResults } from "./matches";
 import { CoveragePage, Overview } from "./overview";
 import { Sharing } from "./sharing";
 import { UploadFlow } from "./upload";
+import { Arriving } from "../arriving";
 
 /**
  * Sureel's contributor portal (S5) — one peer contributor's walled-off tenant: what it gave the
@@ -128,7 +129,7 @@ export function ContributorPortal({ path }: { path: readonly string[] }) {
   if ("cover" in shown) return shown.cover;
   return (
     <AppShell product={product()} place={shown.place}>
-      {shown.page}
+      <Arriving>{shown.page}</Arriving>
     </AppShell>
   );
 }

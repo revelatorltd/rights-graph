@@ -18,6 +18,7 @@ import { requestPage, requestsPage } from "./requests";
 import { noticeCommand, noticePage, noticeSection } from "../notify/pages";
 import { artistSeat } from "../notify/seats";
 import { societiesPage, worksPage } from "./works";
+import { Arriving } from "../arriving";
 
 /**
  * The Artist app (S3) — where personal rights live: identity, credits, voice. Not a catalogue
@@ -134,7 +135,7 @@ export function ArtistApp({ path }: { path: readonly string[] }) {
   return (
     <AppShell product={productFor(persona, reader)} place={shown.place}>
       {follow}
-      {shown.page}
+      <Arriving>{shown.page}</Arriving>
     </AppShell>
   );
 }

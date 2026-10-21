@@ -8,6 +8,7 @@ import { useShellPersona, type PageOf } from "../surface";
 import { CATALOG_PAGES } from "./catalog";
 import { LABEL_PAGES, LABEL_RIGHTS_NAV } from "./label";
 import { PUBLISHER_PAGES, PUBLISHER_RIGHTS_NAV } from "./publisher";
+import { Arriving } from "../arriving";
 
 /**
  * Revelator Pro, with the Rights workspace (S1) and its publishing mode (S2). ONE shell switched by
@@ -74,7 +75,7 @@ export function RevelatorPro({ path }: { path: readonly string[] }) {
     return "cover" in shown ? shown.cover : (
       <AppShell product={productFor(persona)} place={shown.place}>
         {follow}
-        {shown.page}
+        <Arriving>{shown.page}</Arriving>
       </AppShell>
     );
   }
@@ -86,7 +87,7 @@ export function RevelatorPro({ path }: { path: readonly string[] }) {
   return (
     <AppShell product={productFor(persona)} place={shown.place}>
       {follow}
-      {shown.page}
+      <Arriving>{shown.page}</Arriving>
     </AppShell>
   );
 }

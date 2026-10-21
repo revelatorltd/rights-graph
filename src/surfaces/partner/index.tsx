@@ -16,6 +16,7 @@ import { SOCIETY_PAGES } from "./society";
 import { USAGE_PAGES } from "./usage";
 import { WEBHOOK_PAGES } from "./webhooks";
 import { partnerHref, type PartnerPage, type Working } from "./working";
+import { Arriving } from "../arriving";
 
 /**
  * The Partner portal (S6) — Sureel's, for AI platforms, DSPs and societies: mostly a developer
@@ -134,7 +135,7 @@ export function PartnerPortal({ path }: { path: readonly string[] }) {
   return (
     <AppShell product={productFor(working)} place={shown.place}>
       {follow}
-      {shown.page}
+      <Arriving>{shown.page}</Arriving>
     </AppShell>
   );
 }

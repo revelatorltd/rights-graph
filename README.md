@@ -117,10 +117,16 @@ opens renders (41 checked on a fresh session). Two things to know when you demo:
   organisation's chain; advance the demo clock from `#/console/notifications/escalation` or the
   map's account menu. The clock runs ahead of the graph's date, so no clearance or term changes.
 
+- **Loading and error states.** Every surface draws its page through one place
+  (`src/surfaces/arriving.tsx`): a page's first read in a session waits as a fetch would, its wait
+  shown by the system's Spinner in the page's place, the shell around it; a page read before opens
+  at once. Pick *Network* in the map's account menu — **Slow** to watch pages arrive, **Offline**
+  to see every page's error state and *Try again*. The system's page forms take no loading state
+  yet, so the wait has no page-shaped placeholder (gaps.md B19).
+
 ## Not built
 
-Loading states (the fixtures are synchronous, and the system's page forms take no loading prop —
-next), real sending of email, push and sign-in codes, real camera capture for the ID check, a PDF
+Real sending of email, push and sign-in codes, real camera capture for the ID check, a PDF
 file for the export (the browser's print dialog stands in), and posting webhooks to partners'
 endpoints (each write returns the payload it would send). `../revelator-pro-app`
 was not on this machine and its repository is private, so this is a sibling app; the published

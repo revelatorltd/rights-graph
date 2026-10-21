@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { href } from "../../route";
 import { archivedBy, verify } from "./data";
 import { Archive, ArchivedDetail, Batches, EventDetail, Keys, NotFound, verifyHref } from "./pages";
+import { Arriving } from "../arriving";
 
 /**
  * The Verification portal (S8) — Sureel's, public, no account: paste a receipt or an event ID and
@@ -82,7 +83,7 @@ export function VerificationPortal({ path }: { path: readonly string[] }) {
   const { place, page } = shown(path);
   return (
     <AppShell product={PRODUCT} place={place}>
-      {page}
+      <Arriving>{page}</Arriving>
     </AppShell>
   );
 }
