@@ -17,7 +17,7 @@ import { USAGE_PAGES } from "./usage";
 import { WEBHOOK_PAGES } from "./webhooks";
 import { partnerHref, type PartnerPage, type Working } from "./working";
 import { Arriving } from "../arriving";
-import { MAP, elsewhereFrom } from "../family";
+import { UTILITIES, elsewhereFrom } from "../family";
 
 /**
  * The Partner portal (S6) — Sureel's, for AI platforms, DSPs and societies: mostly a developer
@@ -66,7 +66,7 @@ function productFor(working: Working): ShellProduct {
   const society = working.partner.kind === "Society";
   return {
     workspace: { name: working.partner.name, mark: SUREEL_MARK, settings: partnerHref("organisation") },
-    utilities: [MAP],
+    utilities: UTILITIES,
     elsewhere: elsewhereFrom("partner"),
     personas: PERSONAS,
     destinations: [

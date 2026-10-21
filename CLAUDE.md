@@ -32,4 +32,4 @@ npm run build                                                       # types and 
 ```
 
 `check:app`'s vendor step needs the design system committed; until it is, run the two above.
-`npm run dev` serves on 5190. `npm run ds:update` rebuilds and repacks the system.
+`npm run dev` serves on 5195. `npm run ds:update` rebuilds and repacks the system.

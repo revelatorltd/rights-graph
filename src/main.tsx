@@ -10,6 +10,7 @@ import { useRoute, type SurfaceName } from "./route";
 import { ArtistApp } from "./surfaces/artist";
 import { GraphConsole } from "./surfaces/console";
 import { ContributorPortal } from "./surfaces/contributor";
+import { Docs } from "./surfaces/docs";
 import { Home } from "./surfaces/home";
 import { PartnerPortal } from "./surfaces/partner";
 import { RevelatorPro } from "./surfaces/pro";
@@ -18,6 +19,7 @@ import { VerificationPortal } from "./surfaces/verify";
 /** Each surface draws its own product around its own pages. */
 const SURFACE: Record<SurfaceName, (path: readonly string[]) => ReactNode> = {
   home: (path) => <Home path={path} />,
+  docs: (path) => <Docs path={path} />,
   pro: (path) => <RevelatorPro path={path} />,
   artist: (path) => <ArtistApp path={path} />,
   contributor: (path) => <ContributorPortal path={path} />,

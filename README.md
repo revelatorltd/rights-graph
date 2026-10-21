@@ -7,15 +7,17 @@ nothing hand-drawn, and every place the system fell short is logged as a gap rat
 
 ```bash
 npm install
-npm run dev          # http://localhost:5190 — start at the map
+npm run dev          # http://localhost:5195 — start at the map
 ```
 
 ## Start here
 
-**`http://localhost:5190/#/home`** — the map. You never have to come back to it: on every
+**`http://localhost:5195/#/home`** — the map. You never have to come back to it: on every
 surface, the **people button beside the account** (View As) lists that surface's personas and,
 under them, every other surface and persona — one press opens it in that context — and the
-**grid at the foot of the rail** returns to the map. From the map:
+**grid at the foot of the rail** opens a menu of the map's pages — surfaces, personas, flows,
+approaches, design-system gaps. The **book** above it opens the **Docs** — 29 specifications, architecture notes and
+playbooks, each downloadable as Markdown (one doc, one kind, or everything). From the map:
 
 - **Surfaces** — S1–S9, each opening on its first page.
 - **Personas** — all fourteen parties in the FRD; each opens the surface it works in, already in its
@@ -48,7 +50,7 @@ under them, every other surface and persona — one press opens it in that conte
 | S6 Partner portal | `#/partner/overview` (`?persona=openwave-studios`, `gema`, `voxa-voice`, `tessellate`) | Cadence AI and others | Sureel product |
 | S7 Sureel Graph Console | `#/console/health` (`?persona=data-engineer`) | Lior Ben-Ami, Sureel rights ops | Sureel product, RCC's sibling |
 | S8 Verification portal | `#/verify/rcpt_7Q2M-9F4K-CD7A` | an auditor, no account | Sureel, public |
-| S9 Graph API | `curl http://localhost:5190/api/v1/…` · explorer `?persona=cadence-ai#/partner/api` · traffic `#/console/traffic` · `/api/openapi.json` | every system | the same handlers on the dev server (its own copy of the fixtures) and in the browser (the session graph) |
+| S9 Graph API | `curl http://localhost:5195/api/v1/…` · explorer `?persona=cadence-ai#/partner/api` · traffic `#/console/traffic` · `/api/openapi.json` | every system | the same handlers on the dev server (its own copy of the fixtures) and in the browser (the session graph) |
 
 The graph is `src/graph/`: `model.ts` (the ERD), `fixtures.ts` (invented data around the doc's
 worked example — Northbound, Ana, Ben, Harbor Music, Ben Songs, Rhein Edition — so the screens can
@@ -98,6 +100,12 @@ opens renders (41 checked on a fresh session). Two things to know when you demo:
 - **On a phone (375 px)**: no page scrolls sideways; the track record's facts line truncates and
   shows an inner scrollbar, and the readings on Registrations and Look-ups run past the edge.
 
+## Live
+
+The site publishes from `main` on every push (`.github/workflows/pages.yml`) to
+**https://revelatorltd.github.io/rights-graph/**. On the site the S9 API answers in the browser
+only — `curl` needs the dev server.
+
 ## Files, the API, notifications
 
 - **Files are read and saved for real.** CSV, JSON, DDEX ERN/MWN and CWR 2.1 are parsed in the
@@ -108,7 +116,7 @@ opens renders (41 checked on a fresh session). Two things to know when you demo:
   two browser calls that save and print live in `platform/save.ts`, outside `src/`: the system has
   no download command yet (gap B6), and its page check refuses a page that clicks a link itself.
 - **S9 answers over HTTP.** For example:
-  `curl 'http://localhost:5190/api/v1/assets/r-northbound/clearance/effective?use=AI%20training&partner=p-cadence' -H 'Authorization: Bearer ck_live_91d0'`
+  `curl 'http://localhost:5195/api/v1/assets/r-northbound/clearance/effective?use=AI%20training&partner=p-cadence' -H 'Authorization: Bearer ck_live_91d0'`
   returns `needs_review` · `composition_not_cleared` with a receipt. Writes take an
   `Idempotency-Key` and answer 202 with an event id; a key writes only its holder's claims, and an
   attestation about someone else's subject is signed only on their behalf under an agreement.

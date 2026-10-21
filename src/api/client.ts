@@ -111,7 +111,7 @@ export const api = {
 };
 
 /** The request as a shell would send it — for the explorer to show, and a reader to paste. */
-export function curlOf(method: string, path: string, key: string | undefined, body: unknown, headers: Record<string, string> = {}, origin = "http://localhost:5190") {
+export function curlOf(method: string, path: string, key: string | undefined, body: unknown, headers: Record<string, string> = {}, origin = "http://localhost:5195") {
   const url = `${origin}${path.startsWith("/api") ? path : `/api${path}`}`;
   const parts = [`curl -s${method.toUpperCase() === "GET" ? "" : ` -X ${method.toUpperCase()}`} '${url}'`];
   if (key) parts.push(`-H 'Authorization: Bearer ${key}'`);

@@ -1,5 +1,117 @@
 [
   {
+    "surface": "the docs library",
+    "id": "1",
+    "asked": "A card grid of records with no picture — the reference's playbook tile: number in the corner, an icon mark, title, the \"when to use\" line, \"Applies to · Owner\", chips (6 steps, 3 never-break)",
+    "frd": "Reference §1",
+    "here": "RecordIndex.grid with picture: () => null: the tile is the frame's image placeholder, and id, applies to, owner, count and updated ride one meta line. No mark, helper line, chips or corner number. The grid is meant for records \"recognised by their picture\"; a doc is not one"
+  },
+  {
+    "surface": "the docs library",
+    "id": "2",
+    "asked": "An index that opens on its grid with the list beside it",
+    "frd": "Reference §1 (grid is the default)",
+    "here": "RecordIndex passes no defaultView to RecordSet, so the index opens on the table and the reader switches to the grid. only: true would drop the list"
+  },
+  {
+    "surface": "the docs library",
+    "id": "3",
+    "asked": "A helper line under a row's name — \"SPEC-03 · Surfaces\" under the doc's title, \"Damage: …\" under an invariant",
+    "frd": "Reference §1, §2",
+    "here": "the id is its own identifier column; the damage is a column"
+  },
+  {
+    "surface": "the docs library",
+    "id": "4",
+    "asked": "Prose in a table cell — acceptance criteria, an answer, a damage, a model table's description",
+    "frd": "Reference §2 (\"cells wrap\")",
+    "here": "a cell is capped and truncated (no wrap, no title). A sentence longer than a short value is wrapped in Explained, so its whole text is behind the hint; Explained is meant for \"how a figure was reached\""
+  },
+  {
+    "surface": "the docs library",
+    "id": "5",
+    "asked": "A long record name in the record header",
+    "frd": "",
+    "here": "the band truncates the title beside its actions (same as home #1); previous / next are drawn iconOnly to give it room"
+  },
+  {
+    "surface": "the docs library",
+    "id": "6",
+    "asked": "A side column on a detail page — the reference's \"Never break\", templates and open items beside the main column",
+    "frd": "Reference §2",
+    "here": "every section is stacked in DetailOverview in the reference's order; no main + aside form exists"
+  },
+  {
+    "surface": "the docs library",
+    "id": "7",
+    "asked": "A table of contents and anchors inside a long doc",
+    "frd": "Reference §2 (none there either)",
+    "here": "none on screen; the Markdown export carries a generated contents with heading anchors"
+  },
+  {
+    "surface": "the docs library",
+    "id": "8",
+    "asked": "An invariant's state — a danger badge that reads \"never break\"",
+    "frd": "Reference §2 (\"danger badge I1\")",
+    "here": "Badge status=\"verification:Failing\" in an \"If broken\" column, the id as an identifier chip. Proposed: an invariant family (Holds / Broken), or a danger tone for an identifier chip"
+  },
+  {
+    "surface": "the docs library",
+    "id": "9",
+    "asked": "A build state for a requirement — Built / Partly built / Not built",
+    "frd": "",
+    "here": "text, with the product it is built in (formatMeta), and readings to filter by it. Proposed: a build family (settled / attention / waiting)"
+  },
+  {
+    "surface": "the docs library",
+    "id": "10",
+    "asked": "A list inside an Alert — several open items",
+    "frd": "Reference §2",
+    "here": "the items are joined as sentences in one soft warn Alert; the Markdown export lists them"
+  },
+  {
+    "surface": "the docs library",
+    "id": "11",
+    "asked": "A question and its answer as a pair",
+    "frd": "",
+    "here": "one soft Alert per question — info when decided, warn when open — titled with the state and the question, the answer as its body"
+  },
+  {
+    "surface": "the docs library",
+    "id": "12",
+    "asked": "A checklist that is read, not answered",
+    "frd": "Reference §2 (\"real checkboxes, nothing saved\")",
+    "here": "a CheckboxGroup of CheckboxFields in a TitledCard, uncontrolled; nothing is kept"
+  },
+  {
+    "surface": "the docs library",
+    "id": "13",
+    "asked": "A search bar on a small index — three decision rules carry the full search, chooser and paginator",
+    "frd": "",
+    "here": "as the system draws it; an index of a handful of rows inside a card has no lighter form"
+  },
+  {
+    "surface": "the docs library",
+    "id": "14",
+    "asked": "A download command (Markdown files)",
+    "frd": "",
+    "here": "more on the index (\"Download all specifications\" …, \"Download everything\") and a page action on each doc (\"Download as Markdown\"), each opens a function that calls download() in src/rights/files.ts (same as gaps.md B6)"
+  },
+  {
+    "surface": "the docs library",
+    "id": "15",
+    "asked": "A doc mark — a kind of document drawn as a mark in an avatar",
+    "frd": "",
+    "here": "Avatar kind=\"document\" tone=\"muted\" holding the kind's Icon (note, metadata, list-ordered); at hand width the band draws it as a full-width square (gaps.md B15)"
+  },
+  {
+    "surface": "the docs library",
+    "id": "16",
+    "asked": "A rail utility with pages but no rail destinations — the docs product is its utility",
+    "frd": "",
+    "here": "the docs product has destinations: [] and gives the DOCS utility from family.ts its library pages, so its section nav shows; on a phone the tab bar holds only More"
+  },
+  {
     "surface": "Files: reading and download (S1, S1·T, S2, S5, S6, S8)",
     "id": "F1",
     "asked": "A download command (gaps.md B6): a command that hands the reader a file under a name the product gives",

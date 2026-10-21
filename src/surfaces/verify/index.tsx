@@ -6,7 +6,7 @@ import { href } from "../../route";
 import { archivedBy, verify } from "./data";
 import { Archive, ArchivedDetail, Batches, EventDetail, Keys, NotFound, verifyHref } from "./pages";
 import { Arriving } from "../arriving";
-import { MAP, elsewhereFrom } from "../family";
+import { UTILITIES, elsewhereFrom } from "../family";
 
 /**
  * The Verification portal (S8) — Sureel's, public, no account: paste a receipt or an event ID and
@@ -19,7 +19,7 @@ import { MAP, elsewhereFrom } from "../family";
  */
 const PRODUCT: ShellProduct = {
   workspace: { name: "Sureel Verify", mark: ORGANIZATIONS.fieldhouse.art },
-  utilities: [MAP],
+  utilities: UTILITIES,
   elsewhere: elsewhereFrom("verify"),
   destinations: [
     {

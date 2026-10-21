@@ -36,6 +36,7 @@ export const SURFACES: readonly Surface[] = [
   { id: "S7", name: "Sureel Graph Console", owner: "Sureel", users: "Sureel rights ops, data engineers", platform: "Web (internal)", purpose: "Ingestion health, conflict queue, match review, asset inspector, coverage, rules", startsFrom: "New", origin: "New", phase: "Land and measure · Resolve and contribute", opens: href("console", "health"), approach: "operator" },
   { id: "S8", name: "Verification portal", owner: "Sureel", users: "Auditors, courts, lenders, regulators, the public", platform: "Web, no account", purpose: "Check a receipt or event ID against the Proof Log", startsFrom: "Replaces registry.original.works", origin: "New", phase: "After day 90", opens: href("verify"), approach: "public proof" },
   { id: "S9", name: "Graph APIs and feeds", owner: "Sureel", users: "Every system", platform: "API, DDEX, CWR, SFTP", purpose: "Write claims, read clearance and splits, verify, webhooks", startsFrom: "OW Rights Event Ingestion contract", origin: "Extends", phase: "Land and measure", opens: href("partner", "api"), approach: "API-first" },
+  { id: "Docs", name: "Docs library", owner: "Revelator", users: "Anyone reading the specification", platform: "Web", purpose: "Specifications, architecture and playbooks, each downloadable as Markdown", startsFrom: "The Ops prototypes' Playbooks", origin: "New", phase: "Reference", opens: href("docs"), approach: "library" },
 ];
 
 export interface Persona {

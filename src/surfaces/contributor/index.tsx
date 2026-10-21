@@ -15,7 +15,7 @@ import { CoveragePage, Overview } from "./overview";
 import { Sharing } from "./sharing";
 import { UploadFlow } from "./upload";
 import { Arriving } from "../arriving";
-import { MAP, elsewhereFrom } from "../family";
+import { UTILITIES, elsewhereFrom } from "../family";
 
 /**
  * Sureel's contributor portal (S5) — one peer contributor's walled-off tenant: what it gave the
@@ -27,7 +27,7 @@ import { MAP, elsewhereFrom } from "../family";
  */
 const product = (): ShellProduct => ({
   workspace: { name: "Meridian Music Group", mark: ORGANIZATIONS.fieldhouse.art },
-  utilities: [MAP],
+  utilities: UTILITIES,
   elsewhere: elsewhereFrom("contributor"),
   destinations: [
     {

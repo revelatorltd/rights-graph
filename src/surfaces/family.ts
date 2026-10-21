@@ -62,5 +62,29 @@ const FAMILY: readonly (ShellElsewhere & { surface: SurfaceName })[] = [
 export const elsewhereFrom = (surface: SurfaceName): readonly ShellElsewhere[] =>
   FAMILY.filter((one) => one.surface !== surface).map(({ name, views }) => ({ name, views }));
 
-/** The map, at the foot of every surface's rail: where the surfaces, personas and flows are listed. */
-export const MAP: ShellDestination = { name: "Map", mark: "grid", opens: href("home", "surfaces") };
+/**
+ * The map, at the foot of every surface's rail: a MENU of its pages — the surfaces, the personas,
+ * the flows, the approaches and the design system's gaps — so any one is a press away.
+ */
+export const MAP: ShellDestination = {
+  name: "Map",
+  mark: "grid",
+  pages: [
+    {
+      label: "Map",
+      pages: [
+        { name: "Surfaces", opens: href("home", "surfaces") },
+        { name: "Personas", opens: href("home", "personas") },
+        { name: "Flows", opens: href("home", "flows") },
+        { name: "Approaches", opens: href("home", "approaches") },
+        { name: "Design system gaps", opens: href("home", "gaps") },
+      ],
+    },
+  ],
+};
+
+/** The docs, above the map: specifications, architecture and playbooks — read as one library. */
+export const DOCS: ShellDestination = { name: "Docs", mark: "book", opens: href("docs") };
+
+/** The rail's foot on every surface: the docs, then the map. */
+export const UTILITIES: readonly ShellDestination[] = [DOCS, MAP];

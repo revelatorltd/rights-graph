@@ -75,7 +75,7 @@ From `/Users/brunoguez/Documents/GitHub/revelator-pro-design-system.git`:
 `npx tsx scripts/check-page.ts ../rights-graph/src/<your folder>` and
 `npx tsx scripts/lint-stacks.ts ../rights-graph/src/<your folder>` must pass — fix every finding
 (they read the system's own contract; a finding is usually a hand-written value or a page doing what
-a declared form does). The dev server is already running at http://localhost:5190 (don't start
+a declared form does). The dev server is already running at http://localhost:5195 (don't start
 another). If you have a browser tool (Playwright MCP), open your pages there, click through every
 command and flow, and fix runtime errors; otherwise at least ensure `npx vite build` succeeds.
 

@@ -18,6 +18,12 @@ an address it leaves for (`src/components/layouts/shell.tsx`). Every surface her
 eight, and the map as a rail utility. Also the `batch` family's Validating and Ingesting, which
 were drawn alike, now carry marks of their own.
 
+Also decided since, for the rail and the docs: a rail destination with pages and no address of
+its own is a **menu** of them (the map's pages, on every surface); the **`book`** mark (136 marks
+now, its meaning recorded); and `RecordIndex`'s `grid.first`, a set that **opens as tiles** with the
+table a press away. Still asked: a tile for a record that has a MARK rather than a picture — a doc,
+a playbook — which draws the frame's image placeholder today (docs/gaps/docs.md).
+
 Already decided in the system tonight: **eleven rights status families** in `src/lib/statuses.ts`
 — `clearance`, `claim`, `conflict`, `request`, `attestation`, `credit`, `grant`, `batch`, `match`,
 `registration`, `feed`. Tests and typecheck pass; not committed (the system's `src/` has no commit

@@ -5,7 +5,7 @@ import { follow } from "@revelator/pro-ui";
  * Where the reader is: `#/<surface>/<page>/<id>/<facet>`, read off the hash as the replica reads
  * it. Each surface reads its own segments; the app only says which surface draws.
  */
-export const SURFACES = ["home", "pro", "artist", "contributor", "partner", "console", "verify"] as const;
+export const SURFACES = ["home", "docs", "pro", "artist", "contributor", "partner", "console", "verify"] as const;
 export type SurfaceName = (typeof SURFACES)[number];
 
 export interface Route {

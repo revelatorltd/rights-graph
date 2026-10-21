@@ -76,5 +76,5 @@ const graphApi = (): Plugin => ({
 export default defineConfig({
   base: BASE,
   plugins: [react(), systemAssets(), graphApi()],
-  server: { port: 5190 },
+  server: { port: 5195 },
 });
