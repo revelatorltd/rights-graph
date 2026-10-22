@@ -24,6 +24,10 @@ now, its meaning recorded); and `RecordIndex`'s `grid.first`, a set that **opens
 table a press away. Still asked: a tile for a record that has a MARK rather than a picture — a doc,
 a playbook — which draws the frame's image placeholder today (docs/gaps/docs.md).
 
+And: a table cell the column cuts short shows its whole value in a hint on hover or focus, drawn
+by the cell itself, so every index in every surface reads in full without a call site saying so;
+and the View As menu takes the account menu's width, its rows being a role and whose it is.
+
 Already decided in the system tonight: **eleven rights status families** in `src/lib/statuses.ts`
 — `clearance`, `claim`, `conflict`, `request`, `attestation`, `credit`, `grant`, `batch`, `match`,
 `registration`, `feed`. Tests and typecheck pass; not committed (the system's `src/` has no commit
