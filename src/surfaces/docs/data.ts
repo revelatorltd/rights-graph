@@ -118,7 +118,7 @@ const SPECIFICATIONS: readonly Specification[] = [
     summary:
       "The Rights Graph is one record with nine surfaces around it. Rights holders manage rights in the product they already use, artists in a phone app, peer contributors in a walled tenant, licensees through a portal and an API, and anyone can check a receipt without an account. Sureel runs the graph from its console. One rule holds everywhere: every surface writes claims, and only the graph resolves them.",
     prototype: href("home", "surfaces"),
-    related: ["SPEC-02", "SPEC-11", "SPEC-12", "ARCH-09"],
+    related: ["SPEC-02", "SPEC-11", "SPEC-12", "ARCH-09", "ARCH-10"],
     requirements: [
       { id: "S1", requirement: "Rights workspace in Revelator Pro, for labels and distributors", priority: "Must", acceptance: "A label sees coverage, clearances, AI consent, requests and conflicts for its own catalogue, and a Rights tab on every asset", built: "Built", where: LABEL("rights", "overview") },
       { id: "S2", requirement: "Publisher workspace — the same shell in publishing mode", priority: "Must", acceptance: "A publisher sees works, writer shares, recordings to link, registrations and composition-side conflicts", built: "Built", where: PUBLISHER("rights", "overview") },
@@ -946,6 +946,72 @@ const ARCHITECTURE: readonly Architecture[] = [
     questions: [
       { question: "How is it checked?", answer: "Types, the design system's page check and stack lint over every page, and an API check of the worked example's answers.", state: "Decided" },
       { question: "Where are the design system's gaps?", answer: "Logged per surface and read as one index on the map.", state: "Decided" },
+    ],
+  },
+  {
+    kind: "Architecture",
+    id: "ARCH-10",
+    title: "Database schema",
+    appliesTo: "The backend",
+    owner: "Graph engineering",
+    updated: day(2026, 10, 23),
+    summary:
+      "The schema the backend builds on: PostgreSQL 16, six schemas, 74 tables. The facts are append-only and bitemporal; the four kinds of fact keep a table each; contributors are segregated by row-level security and envelope encryption; the Proof Log stands apart. The runnable DDL is db/schema.sql in the repository, and npm run db:test loads it and proves its rules against the worked example.",
+    prototype: href("console", "assets", "w-northbound"),
+    related: ["ARCH-01", "ARCH-04", "ARCH-06", "ARCH-07", "ARCH-08"],
+    tables: [
+      {
+        title: "Six schemas",
+        columns: ["Schema", "Tables", "Holds", "Served to"],
+        rows: [
+          ["graph", "40", "Assets, parties, agreements, the four fact kinds, links, conflicts, registrations, rule versions, read models", "Every surface, the resolver, the royalty engine"],
+          ["workflow", "6", "Requests (the inbox), escalation, notifications and their deliveries", "S1–S4 inboxes, the artist app, the console"],
+          ["tenancy", "10", "Organisations, people, roles, delegates, ID checks, profile claims, sharing policy, audit windows, access log", "Sign-in everywhere; sign-up; contributor sharing and access"],
+          ["ingest", "6", "Feeds, batches, row errors, saved mappings, match results, coverage snapshots", "Contributor portal; console ingestion and coverage"],
+          ["api", "8", "Keys and scopes, idempotency, the command log and outbox, webhooks, usage reports", "S9 and the partner portal"],
+          ["proof", "4", "Hash-chained signed events, Merkle batches, signing keys, receipts — its own service and keys", "Verification portal, receipts, auditors"],
+        ],
+      },
+      {
+        title: "The facts (graph)",
+        columns: ["Table", "One row is", "Rules the database keeps"],
+        rows: [
+          ["rights_assertion", "One source's claim: one asset, party, interest, right, share type, share, territory, valid period, system period", "Append-only (a trigger); deletes ignored; one claim per edge per source per period (an exclusion constraint); share 0–100; a start date; never on a release"],
+          ["clearance_grant + grant_partner", "A grant or deny at the scope it was made, with its partner list", "Stored at its scope, never fanned out; artist scope is Voice/NIL only; no authority → stored and flagged"],
+          ["attestation", "A signed statement — the VC payload, its JWS signature and key", "On someone's behalf only with the agreement that allows it; revocation is a new event"],
+          ["provenance_record", "How an asset was made, as one reporter said it", "Several per asset, never merged; an undisclosed fingerprint stays null"],
+          ["conflict (+ claims, parties, territories, comments, evidence)", "A disagreement the resolver would not pick a side on", "Severity, revenue at risk, the counterclaim step 0–3; a resolved conflict names its reason and rule"],
+          ["recording_work, video_recording, video_work, release_item, derivation, contribution, same_as", "One direct link", "Only direct links are stored; what a video touches is read through them; merges are reversible"],
+          ["territory_set + territory_member", "A canonical include/exclude set, and each country in it", "One row per distinct set"],
+        ],
+      },
+      {
+        title: "Reads",
+        columns: ["Table, view or function", "Answers", "Used by"],
+        rows: [
+          ["assertions_as_of(asset, as_of, known_at)", "The claims valid on a date, as believed at a time", "As-of views, restatements"],
+          ["v_share_totals", "Totals per asset, right, share type and country — overclaim, gap or whole", "The resolver on every write; nightly scans"],
+          ["v_unlinked_earning_recordings", "Earning recordings with no work link", "The nightly HIGH scan; recordings to link"],
+          ["resolved_edge", "The winning edges of a pinned graph version", "The royalty engine, the splits API"],
+          ["effective_clearance", "The answer per asset, use, partner, country and period, per side", "The clearance API — P95 under 400 ms"],
+        ],
+      },
+      {
+        title: "Who may read what",
+        columns: ["Mechanism", "What it does"],
+        rows: [
+          ["Row-level security", "The app sets the tenant and role per connection; a contributor reads its own tenant's claims, agreements, batches and access log"],
+          ["Envelope encryption", "Private terms are encrypted with the contributor's KMS key; nobody reads them outside an audit window"],
+          ["Audit window", "Logged, at most 24 hours, naming its fields; every read under it lands in the contributor's access log"],
+          ["API keys", "Hashed secrets, scopes, rotation; a key writes only its holder's claims; a write's confirmation is the writer's alone"],
+        ],
+      },
+    ],
+    questions: [
+      { question: "Is the schema runnable?", answer: "Yes: npm run db:test loads db/schema.sql into PGlite and checks the Northbound example — DE at 110%, a superseding correction back to 100%, every refused write refused for its reason.", state: "Decided" },
+      { question: "Why one row per interest and per right?", answer: "The totals and the exclusion constraint need atomic edges; ingestion expands 'all composition' into its rights.", state: "Decided" },
+      { question: "How are the big tables partitioned?", answer: "By month, or by tenant for assertions, once volume is measured.", state: "Open" },
+      { question: "Does the Proof Log share the database?", answer: "No: its own cluster and account, written only through the outbox worker.", state: "Decided" },
     ],
   },
 ];

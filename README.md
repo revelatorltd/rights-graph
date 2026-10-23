@@ -106,6 +106,14 @@ The site publishes from `main` on every push (`.github/workflows/pages.yml`) to
 **https://revelatorltd.github.io/rights-graph/**. On the site the S9 API answers in the browser
 only — `curl` needs the dev server.
 
+## The database
+
+[`docs/data-schema.md`](docs/data-schema.md) is the schema the backend builds on — PostgreSQL 16,
+six schemas, 74 tables, what each holds and which rule it enforces — and
+[`db/schema.sql`](db/schema.sql) is its runnable DDL. `npm run db:test` loads it into PGlite
+(Postgres in WebAssembly, no server) and proves its rules against the worked example. The same
+schema reads in the app as **ARCH-10** in the Docs, downloadable as Markdown.
+
 ## Files, the API, notifications
 
 - **Files are read and saved for real.** CSV, JSON, DDEX ERN/MWN and CWR 2.1 are parsed in the
