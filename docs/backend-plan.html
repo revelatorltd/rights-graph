@@ -1,0 +1,292 @@
+<title>Rights Graph Backend Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: one reading column with a phase timeline that steps down the page; tables scroll in place. */
+  :root {
+    --bg: #f5f6fa;
+    --surface: #ffffff;
+    --ink: #0e0e11;
+    --ink-2: #4a4b57;
+    --ink-3: #6e7080;
+    --line: #e1e3ec;
+    --accent: #433af8;
+    --accent-soft: #ecebfe;
+    --done: #12805c;
+    --done-soft: #e3f4ec;
+    --open: #a35a00;
+    --open-soft: #fdf0dc;
+    --display: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --body: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121217; --surface: #1b1b22; --ink: #e8eaf2; --ink-2: #b6b8c6; --ink-3: #8c8ea0; --line: #2d2e38;
+      --accent: #8f8afc; --accent-soft: #24234a; --done: #4fc99a; --done-soft: #15302a; --open: #f0b25a; --open-soft: #35290f;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121217; --surface: #1b1b22; --ink: #e8eaf2; --ink-2: #b6b8c6; --ink-3: #8c8ea0; --line: #2d2e38;
+    --accent: #8f8afc; --accent-soft: #24234a; --done: #4fc99a; --done-soft: #15302a; --open: #f0b25a; --open-soft: #35290f;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .page { max-width: 920px; margin: 0 auto; padding-block: 48px 72px; display: grid; gap: 56px; }
+  h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+  h1 { font-size: clamp(30px, 5vw, 42px); line-height: 1.1; font-weight: 700; }
+  h2 { font-size: 24px; line-height: 1.2; font-weight: 700; }
+  h3 { font-size: 17px; line-height: 1.3; font-weight: 600; }
+  p { margin: 0; max-width: 68ch; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  code, .mono { font-family: var(--mono); font-size: 0.88em; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+  .lede { font-size: 18px; color: var(--ink-2); }
+  section { display: grid; gap: 20px; }
+  .section-head { display: grid; gap: 8px; }
+  .muted { color: var(--ink-3); }
+
+  header.top { display: grid; gap: 16px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; color: var(--ink-3); }
+
+  /* The answer, set apart once. */
+  .answer { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 24px; display: grid; gap: 12px; }
+  .answer strong { color: var(--ink); }
+
+  /* In hand */
+  .assets { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .asset { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+  .asset .what { font-weight: 600; }
+  .asset .where { font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); overflow-wrap: anywhere; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); background: var(--bg); }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 600; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+  .pill.open { background: var(--open-soft); color: var(--open); }
+  .pill.done { background: var(--done-soft); color: var(--done); }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* Phases: a real sequence, so they are numbered and dated. */
+  .timeline { display: grid; gap: 0; }
+  .phase { display: grid; grid-template-columns: 116px 1fr; gap: 20px; position: relative; padding-bottom: 28px; }
+  .phase:last-child { padding-bottom: 0; }
+  .when { display: grid; gap: 2px; align-content: start; padding-top: 2px; }
+  .when .n { font-family: var(--mono); font-size: 12px; color: var(--accent); font-weight: 500; }
+  .when .dates { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .when .gate { font-size: 12.5px; color: var(--ink-3); }
+  .body { border-left: 2px solid var(--line); padding-left: 20px; display: grid; gap: 12px; min-width: 0; }
+  .phase:first-child .body { border-left-color: var(--accent); }
+  .body ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+  .done-when { font-size: 14.5px; background: var(--accent-soft); border-radius: 6px; padding: 10px 12px; }
+  .done-when b { color: var(--accent); }
+  @media (max-width: 600px) {
+    .phase { grid-template-columns: 1fr; gap: 8px; }
+    .body { border-left: 0; padding-left: 0; }
+  }
+
+  /* Asks */
+  .asks { display: grid; gap: 12px; counter-reset: ask; }
+  .ask { display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+  .ask::before { counter-increment: ask; content: counter(ask); font-family: var(--mono); font-weight: 500; color: var(--accent); background: var(--accent-soft); border-radius: 6px; width: 28px; height: 28px; display: grid; place-items: center; font-size: 14px; }
+  .ask div { display: grid; gap: 4px; min-width: 0; }
+
+  ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 72ch; }
+  footer { font-size: 13.5px; color: var(--ink-3); border-top: 1px solid var(--line); padding-top: 20px; }
+</style>
+
+<main class="page">
+  <header class="top">
+    <div class="eyebrow">Rights Graph · Proposal</div>
+    <h1>Rights Graph Backend Plan</h1>
+    <p class="lede">How we go from the working prototype to a backend that answers who owns, controls and cleared what — for the 30 November gate and the first AI deal on 18 January.</p>
+    <div class="meta">
+      <span>23 October 2026</span>
+      <span>Draft for team review</span>
+      <span>Live prototype: <a href="https://revelatorltd.github.io/rights-graph/">revelatorltd.github.io/rights-graph</a></span>
+    </div>
+  </header>
+
+  <div class="answer">
+    <h2>Where we stand</h2>
+    <p><strong>We don't need more broad documentation.</strong> The FRD, the data-model doc and the prototype already define what the backend does. What is missing is a short list of decisions only the business and our partners can make, three precise specs, and real data. With those in hand, we build one thin working slice end to end instead of planning further.</p>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <div class="eyebrow">Already in hand</div>
+      <h2>What the backend starts from</h2>
+    </div>
+    <div class="assets">
+      <div class="asset"><span class="what">Database schema</span><span>PostgreSQL 16, six schemas, 74 tables. Loads and passes its rule checks.</span><span class="where">db/schema.sql · docs/data-schema.md</span></div>
+      <div class="asset"><span class="what">Resolution rules as code</span><span>Ownership precedence, clearance order, the dependency, composition and authority rules.</span><span class="where">src/graph/resolve.ts</span></div>
+      <div class="asset"><span class="what">API contract</span><span>Write, resolve and verify endpoints with scopes, idempotency and webhooks, as OpenAPI 3.1.</span><span class="where">src/api/ · /api/openapi.json</span></div>
+      <div class="asset"><span class="what">Every surface's screens</span><span>Nine surfaces that show exactly what each page reads and writes. They become the backend's first client.</span><span class="where">src/surfaces/</span></div>
+      <div class="asset"><span class="what">Acceptance tests</span><span>The worked example's answers, 48 API checks and 19 database checks — the backend's first test suite.</span><span class="where">scripts/api-check.ts · db/test.mjs</span></div>
+      <div class="asset"><span class="what">Specs and playbooks</span><span>29 docs: specifications, architecture and playbooks, each downloadable as Markdown.</span><span class="where">Docs library in the prototype</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="eyebrow">Before we build</div>
+      <h2>Decisions that block the work</h2>
+      <p class="muted">Each one changes the resolver or who writes the code. The prototype already took a default on each, so nothing is stalled — but none is final until its owner signs it off.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Decision</th><th>Built today as</th><th>Owner</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Who builds the backend, and on what stack</td><td>Postgres system of record, event-sourced writes, a separate Proof Log service (the data-model doc's recommendation)</td><td>Graph owner, with engineering</td><td><span class="pill open">Open</span></td></tr>
+          <tr><td>Source precedence for ownership</td><td>Signed agreement → society ack → CWR submitted → label declaration → self-declared → platform claim (evidence only)</td><td>Rights ops leads</td><td><span class="pill open">Open</span></td></tr>
+          <tr><td>Does AI training on a recording need composition-side consent?</td><td>Yes — both sides required by default</td><td>Legal</td><td><span class="pill open">Open</span></td></tr>
+          <tr><td>Does a disputed attest-on-behalf pause the Voice/NIL grant?</td><td>Paused until resolved</td><td>Legal</td><td><span class="pill open">Open</span></td></tr>
+          <tr><td>Does a decline write a deny, or leave the use unanswered?</td><td>Unanswered — no deny written</td><td>Legal</td><td><span class="pill open">Open</span></td></tr>
+          <tr><td>May a party close its own overclaim by correcting it?</td><td>Yes; only operators resolve contested ones</td><td>Rights ops leads</td><td><span class="pill open">Open</span></td></tr>
+          <tr><td>Must a label's recording-to-work link wait for the publisher?</td><td>Written straight through, method recorded</td><td>Rights ops leads</td><td><span class="pill open">Open</span></td></tr>
+          <tr><td>Identity level needed to sign Voice/NIL</td><td>Verified + ID</td><td>Legal, with the graph owner</td><td><span class="pill open">Open</span></td></tr>
+          <tr><td>Thresholds for the 30 November gate</td><td>Placeholders: 70% / 50% / 40% / ≤3%</td><td>Deal team</td><td><span class="pill open">Open</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="eyebrow">Before we build</div>
+      <h2>Specs and data we need</h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Item</th><th>Why it matters</th><th>Input needed</th></tr></thead>
+        <tbody>
+          <tr><td>Ingestion spec per source</td><td>Every claim enters through one. Revelator Pro and RightsScale first, then CWR acknowledgements, then the rights database feeds</td><td>A real export file from each source</td></tr>
+          <tr><td>Consent and attestation API</td><td>The interface AI partners and the graph owner build against</td><td>Sign-off on the contract in <code>/api/openapi.json</code></td></tr>
+          <tr><td>Non-functional targets</td><td>4M recordings expand to hundreds of millions of claim rows; clearance must answer in P95 &lt; 400 ms at 500 req/s</td><td>Volumes, retention, hosting region, uptime</td></tr>
+          <tr><td>Third-party services</td><td>ID checks, push and email, and the key store that signs proof events</td><td>Vendor choices and accounts</td></tr>
+          <tr><td>A real data sample</td><td>The schema and resolver have only met invented fixtures</td><td>A Revelator catalogue extract, ideally with splits and agreements</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="eyebrow">The plan</div>
+      <h2>Four phases to the first AI deal</h2>
+      <p class="muted">Dates are proposals, set against the two fixed points: the gate on 30 November and an AI deal reading the graph by 18 January.</p>
+    </div>
+    <div class="timeline">
+      <div class="phase">
+        <div class="when"><span class="n">Phase 0</span><span class="dates">26 Oct – 6 Nov</span><span class="gate">Decide</span></div>
+        <div class="body">
+          <h3>Settle the decisions and freeze the tests</h3>
+          <ul>
+            <li>Agree who builds and on what stack; record it and the policy calls as short architecture decision records.</li>
+            <li>Inventory what existing code can be ported versus what is still only a spec.</li>
+            <li>Write ingestion spec #1 from a real Revelator Pro export.</li>
+            <li>Freeze a golden test set: the worked example plus a few hundred real records with hand-checked answers.</li>
+          </ul>
+          <div class="done-when"><b>Done when</b> the stack is chosen, every decision above has an owner and a date, and the golden set runs in CI.</div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="when"><span class="n">Phase 1</span><span class="dates">9 – 27 Nov</span><span class="gate">Before the gate</span></div>
+        <div class="body">
+          <h3>One thin slice, end to end, on real data</h3>
+          <ul>
+            <li>The Postgres schema in a real database, with migrations.</li>
+            <li>The write path: command, event log and outbox in one transaction.</li>
+            <li>Resolver v1 for performance and mechanical rights, writing pinned graph versions.</li>
+            <li>The splits and effective-clearance read APIs.</li>
+            <li>Revelator Pro catalogue ingestion.</li>
+            <li>The coverage metric on Revelator-held catalogue, so the gate has a defensible number.</li>
+            <li>The prototype pointed at the real API: its screens become the first client and the visual check.</li>
+          </ul>
+          <div class="done-when"><b>Done when</b> a real catalogue loads, the splits API returns the golden set's answers, and the coverage number is reported per lane.</div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="when"><span class="n">Phase 2</span><span class="dates">30 Nov – 18 Dec</span><span class="gate">Resolve and contribute</span></div>
+        <div class="body">
+          <h3>Conflicts, contributors and society data</h3>
+          <ul>
+            <li>Conflict detection (overclaims, gaps, missing links) and the operations queue.</li>
+            <li>Contributor tenants with row-level security and encrypted private terms.</li>
+            <li>CWR and acknowledgement ingestion; matching with reversible merges.</li>
+            <li>Coverage computed for every data source.</li>
+          </ul>
+          <div class="done-when"><b>Done when</b> a peer contributor can upload into its own tenant, see its match results, and no other tenant can read its private terms.</div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="when"><span class="n">Phase 3</span><span class="dates">4 – 15 Jan</span><span class="gate">Clear and serve</span></div>
+        <div class="body">
+          <h3>Clearance, proof and partners</h3>
+          <ul>
+            <li>Clearance grants and attestations, signed with real keys.</li>
+            <li>The Proof Log as its own service: hash chain, Merkle batches, external timestamps.</li>
+            <li>Partner keys, scopes and webhooks; receipts that verify without an account.</li>
+            <li>Notifications and escalation for the approval inbox.</li>
+          </ul>
+          <div class="done-when"><b>Done when</b> an AI partner asks the clearance API for a catalogue, gets a per-track answer with a receipt, and an auditor verifies the receipt offline.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="eyebrow">Working together</div>
+      <h2>How the team stays in sync</h2>
+    </div>
+    <ul class="plain">
+      <li><strong>One repository is the source of truth.</strong> The prototype, docs, schema and tests live in <a href="https://github.com/revelatorltd/rights-graph">revelatorltd/rights-graph</a>; the backend joins it or sits beside it, sharing the schema and the tests.</li>
+      <li><strong>Work on branches, merge by pull request.</strong> Every push to <code>main</code> redeploys the live prototype, so reviewers always see the current state.</li>
+      <li><strong>The tests run on every pull request.</strong> Type checks, the design system's page checks, the API checks and the database checks; the golden set joins them in Phase 0.</li>
+      <li><strong>Decisions are written down where the code is.</strong> Each policy call becomes a short decision record next to the rule it changes, so the reason travels with the code.</li>
+      <li><strong>The design system is versioned too.</strong> The prototype builds against a packaged copy; the design-system repository should be committed and pushed so its changes are reviewable.</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="eyebrow">To start</div>
+      <h2>Three things we need from the team</h2>
+    </div>
+    <div class="asks">
+      <div class="ask"><div><h3>Who builds it, and on what stack</h3><p class="muted">Everything after Phase 0 depends on this answer.</p></div></div>
+      <div class="ask"><div><h3>An owner and a date for each open decision</h3><p class="muted">The nine decisions above. The prototype's defaults hold until each is signed off.</p></div></div>
+      <div class="ask"><div><h3>One real data sample</h3><p class="muted">A Revelator catalogue export with splits and agreements, so ingestion spec #1 and the golden set are written against real records.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="eyebrow">Risks</div>
+      <h2>What could slip</h2>
+    </div>
+    <ul class="plain">
+      <li><strong>The stack decision runs late.</strong> Mitigation: Phase 0 work (specs, golden set, decision records) is stack-neutral and starts now.</li>
+      <li><strong>Real data arrives late.</strong> Mitigation: run the coverage metric on Revelator-held catalogue first to prove the method.</li>
+      <li><strong>Scale surprises the schema.</strong> Mitigation: load a full catalogue in Phase 1 and partition the largest tables before Phase 2.</li>
+      <li><strong>Policy calls change late.</strong> Mitigation: each is one rule in the resolver, versioned and replayable, so a change shows exactly which answers move before it ships.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Built from the Rights Graph FRD, the data-model document and the working prototype. Source of this page: <code>docs/backend-plan.html</code> in the repository.
+  </footer>
+</main>
